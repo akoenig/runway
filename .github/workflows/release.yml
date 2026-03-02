@@ -25,6 +25,9 @@ jobs:
         with:
           xcode-version: "15.2"
 
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
       - name: Generate Xcode project
         run: xcodegen generate
 
