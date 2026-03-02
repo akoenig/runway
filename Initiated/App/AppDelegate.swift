@@ -84,7 +84,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: RunLoop.main)
             .sink { [weak self] _, _ in
                 guard let self = self else { return }
-                self.updateStatusIcon(status: self.viewModel.overallStatus)
+                self.updateStatusIcon(
+                    status: self.viewModel.overallStatus,
+                    count: self.viewModel.activeWorkflowCount
+                )
             }
             .store(in: &cancellables)
     }
@@ -198,7 +201,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Status Icon
 
-    private func updateStatusIcon(status: WorkflowStatus) {
+    private func updateStatusIcon(status: WorkflowStatus, count: Int) {
         guard let button = statusItem?.button else { return }
 
         let color: NSColor = switch status {
@@ -213,6 +216,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         button.image = makeStatusDot(color: color)
+
+        if count > 0 {
+            button.title = " \(count)"
+            button.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+        } else {
+            button.title = ""
+        }
     }
 
     /// Draws a small colored circle suitable for the menu bar.

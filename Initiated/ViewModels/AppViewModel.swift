@@ -38,12 +38,23 @@ final class AppViewModel: ObservableObject {
     /// Tracks the in-flight user validation so startMonitoring() can await it.
     private var userValidationTask: Task<Void, Never>?
 
+    /// Workflows updated within the last 10 minutes are considered "recent"
+    /// and contribute to the overall status. Older workflows are ignored so
+    /// the menu bar dot doesn't stay red/green for days after a stale run.
+    private static let stalenessThreshold: TimeInterval = 10 * 60
+
+    private var recentWorkflows: [WorkflowRun] {
+        let cutoff = Date().addingTimeInterval(-Self.stalenessThreshold)
+        return workflows.filter { $0.updatedAt > cutoff }
+    }
+
     var overallStatus: WorkflowStatus {
         guard isAuthenticated else { return .idle }
 
-        let runningCount = workflows.filter { $0.workflowStatus == .running }.count
-        let failedCount = workflows.filter { $0.workflowStatus == .failure }.count
-        let successCount = workflows.filter { $0.workflowStatus == .success }.count
+        let recent = recentWorkflows
+        let runningCount = recent.filter { $0.workflowStatus == .running }.count
+        let failedCount = recent.filter { $0.workflowStatus == .failure }.count
+        let successCount = recent.filter { $0.workflowStatus == .success }.count
 
         // Running takes priority — active work is the most important signal.
         if runningCount > 0 {
@@ -54,6 +65,11 @@ final class AppViewModel: ObservableObject {
             return .success
         }
         return .idle
+    }
+
+    /// Count shown next to the menu bar dot.
+    var activeWorkflowCount: Int {
+        recentWorkflows.count
     }
 
     var statusText: String {
