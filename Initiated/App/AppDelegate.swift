@@ -28,6 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyRef: EventHotKeyRef?
     private var hotkeyHandler: EventHandlerRef?
     private var cancellables = Set<AnyCancellable>()
+    private var pulseTimer: Timer?
+    private var pulsingUp: Bool = false
 
     private let viewModel = AppViewModel()
     private let notificationService = NotificationService()
@@ -49,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         viewModel.stopMonitoring()
+        stopPulse()
         removeEventMonitor()
         unregisterHotkey()
     }
@@ -223,6 +226,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             button.title = ""
         }
+
+        // Pulse the dot when workflows are running
+        if status == .running {
+            startPulse()
+        } else {
+            stopPulse()
+        }
+    }
+
+    // MARK: - Pulse Animation
+
+    private func startPulse() {
+        // Already pulsing
+        guard pulseTimer == nil else { return }
+
+        pulsingUp = false
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            guard let self = self,
+                  let button = self.statusItem?.button else { return }
+
+            let current = button.alphaValue
+
+            if self.pulsingUp {
+                let next = current + 0.03
+                if next >= 1.0 {
+                    button.alphaValue = 1.0
+                    self.pulsingUp = false
+                } else {
+                    button.alphaValue = next
+                }
+            } else {
+                let next = current - 0.03
+                if next <= 0.3 {
+                    button.alphaValue = 0.3
+                    self.pulsingUp = true
+                } else {
+                    button.alphaValue = next
+                }
+            }
+        }
+    }
+
+    private func stopPulse() {
+        pulseTimer?.invalidate()
+        pulseTimer = nil
+        statusItem?.button?.alphaValue = 1.0
     }
 
     /// Draws a small colored circle suitable for the menu bar.
