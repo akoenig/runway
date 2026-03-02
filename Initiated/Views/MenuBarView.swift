@@ -14,21 +14,21 @@ struct MenuBarView: View {
                 footerSection
             }
         }
-        .frame(width: 300, height: 380)
+        .frame(width: 260, height: 320)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(.background)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.08), radius: 24, x: 0, y: 8)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 4)
     }
 
     private var headerSection: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             statusIndicator
             
             Text("Initiated")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
             
             Spacer()
 
@@ -38,30 +38,24 @@ struct MenuBarView: View {
                 }
             } label: {
                 Image(systemName: "gear")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                    .frame(width: 26, height: 26)
+                    .frame(width: 22, height: 22)
                     .background(
                         Circle()
-                            .fill(Color.secondary.opacity(0.08))
+                            .fill(Color.secondary.opacity(0.06))
                     )
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
     }
 
     private var statusIndicator: some View {
-        ZStack {
-            Circle()
-                .fill(statusColor.opacity(0.12))
-                .frame(width: 28, height: 28)
-            
-            Circle()
-                .fill(statusColor)
-                .frame(width: 10, height: 10)
-        }
+        Circle()
+            .fill(statusColor)
+            .frame(width: 8, height: 8)
     }
 
     private var statusColor: Color {
@@ -93,23 +87,21 @@ struct MenuBarView: View {
     }
 
     private var notAuthenticatedView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             Spacer()
             
-            VStack(spacing: 12) {
-                Image(systemName: "link.circle.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.blue)
+            Image(systemName: "link.circle.fill")
+                .font(.system(size: 32))
+                .foregroundStyle(.blue)
 
-                VStack(spacing: 4) {
-                    Text("Connect GitHub")
-                        .font(.system(size: 16, weight: .semibold))
-                    
-                    Text("Link your account to monitor workflows")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
+            VStack(spacing: 2) {
+                Text("Connect GitHub")
+                    .font(.system(size: 14, weight: .semibold))
+                
+                Text("Link your account to monitor workflows")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
 
             Button {
@@ -118,10 +110,10 @@ struct MenuBarView: View {
                 }
             } label: {
                 Text("Connect")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
                     .background(Color.blue)
                     .clipShape(Capsule())
             }
@@ -129,19 +121,19 @@ struct MenuBarView: View {
             
             Spacer()
         }
-        .padding()
+        .padding(.horizontal, 12)
     }
 
     private var loadingView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             Spacer()
             
             ProgressView()
-                .scaleEffect(0.9)
+                .scaleEffect(0.8)
                 .tint(.secondary)
             
             Text("Loading...")
-                .font(.system(size: 13))
+                .font(.system(size: 11))
                 .foregroundStyle(.secondary)
             
             Spacer()
@@ -149,24 +141,22 @@ struct MenuBarView: View {
     }
 
     private func errorView(message: String) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             Spacer()
             
-            VStack(spacing: 12) {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.orange)
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.system(size: 32))
+                .foregroundStyle(.orange)
 
-                VStack(spacing: 4) {
-                    Text("Connection Error")
-                        .font(.system(size: 16, weight: .semibold))
-                    
-                    Text(message)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(3)
-                }
+            VStack(spacing: 2) {
+                Text("Connection Error")
+                    .font(.system(size: 14, weight: .semibold))
+                
+                Text(message)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
             }
 
             Button {
@@ -175,10 +165,10 @@ struct MenuBarView: View {
                 }
             } label: {
                 Text("Retry")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.blue)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
                     .background(
                         Capsule()
                             .fill(Color.blue.opacity(0.1))
@@ -188,61 +178,54 @@ struct MenuBarView: View {
             
             Spacer()
         }
-        .padding()
+        .padding(.horizontal, 12)
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             Spacer()
             
-            VStack(spacing: 12) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.green)
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 32))
+                .foregroundStyle(.green)
 
-                VStack(spacing: 4) {
-                    Text("All Clear")
-                        .font(.system(size: 16, weight: .semibold))
-                    
-                    Text("No active workflows")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
+            VStack(spacing: 2) {
+                Text("All Clear")
+                    .font(.system(size: 14, weight: .semibold))
+                
+                Text("No active workflows")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
             
             Spacer()
         }
-        .padding()
+        .padding(.horizontal, 12)
     }
 
     private var workflowListView: some View {
         ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: 2) {
+            LazyVStack(spacing: 0) {
                 ForEach(viewModel.workflows) { workflow in
                     WorkflowRowView(workflow: workflow) {
                         if let url = URL(string: workflow.htmlUrl) {
                             NSWorkspace.shared.open(url)
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 2)
                 }
             }
-            .padding(.vertical, 4)
         }
     }
 
     private var footerSection: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 6, height: 6)
-                
-                Text(viewModel.statusText)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
+        HStack(spacing: 6) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 5, height: 5)
+            
+            Text(viewModel.statusText)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
 
             Spacer()
 
@@ -252,21 +235,16 @@ struct MenuBarView: View {
                 }
             } label: {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
                     .foregroundStyle(viewModel.isLoading ? .tertiary : .secondary)
-                    .frame(width: 24, height: 24)
-                    .background(
-                        Circle()
-                            .fill(Color.secondary.opacity(0.08))
-                    )
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .disabled(viewModel.isLoading)
             .rotationEffect(.degrees(viewModel.isLoading ? 360 : 0))
             .animation(viewModel.isLoading ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: viewModel.isLoading)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color.secondary.opacity(0.03))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
     }
 }

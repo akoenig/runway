@@ -8,41 +8,41 @@ struct WorkflowRowView: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 statusIcon
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(workflow.name)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .lineLimit(1)
 
-                    Text("\(workflow.repository.name) • \(workflow.shortSha)")
-                        .font(.system(size: 10))
+                    Text("\(workflow.repository.name) · \(workflow.shortSha)")
+                        .font(.system(size: 9))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 2) {
+                VStack(alignment: .trailing, spacing: 1) {
                     statusBadge
                     
                     Text(workflow.formattedDate)
-                        .font(.system(size: 10))
+                        .font(.system(size: 9))
                         .foregroundStyle(.tertiary)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
             .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered ? Color.secondary.opacity(0.06) : Color.clear)
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHovered ? Color.secondary.opacity(0.05) : Color.clear)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.12)) {
+            withAnimation(.easeInOut(duration: 0.1)) {
                 isHovered = hovering
             }
         }
@@ -52,20 +52,20 @@ struct WorkflowRowView: View {
         ZStack {
             Circle()
                 .fill(statusBackgroundColor)
-                .frame(width: 26, height: 26)
+                .frame(width: 20, height: 20)
             
             Image(systemName: statusIconName)
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 9, weight: .medium))
                 .foregroundStyle(statusColor)
         }
     }
 
     private var statusBadge: some View {
         Text(statusText)
-            .font(.system(size: 9, weight: .medium))
+            .font(.system(size: 8, weight: .medium))
             .foregroundStyle(statusColor)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
             .background(
                 Capsule()
                     .fill(statusBackgroundColor)
@@ -112,6 +112,6 @@ struct WorkflowRowView: View {
     }
 
     private var statusBackgroundColor: Color {
-        statusColor.opacity(0.12)
+        statusColor.opacity(0.1)
     }
 }
