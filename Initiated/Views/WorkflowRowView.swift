@@ -8,138 +8,110 @@ struct WorkflowRowView: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 statusIcon
-                    .frame(width: 32, height: 32)
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(workflow.name)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .lineLimit(1)
 
-                    HStack(spacing: 4) {
-                        Text(workflow.repository.name)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                        
-                        Text("•")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.tertiary)
-                        
-                        Text(workflow.shortSha)
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .lineLimit(1)
+                    Text("\(workflow.repository.name) • \(workflow.shortSha)")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 3) {
+                VStack(alignment: .trailing, spacing: 2) {
                     statusBadge
                     
                     Text(workflow.formattedDate)
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered ? Color.secondary.opacity(0.08) : Color.clear)
+                    .fill(isHovered ? Color.secondary.opacity(0.06) : Color.clear)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(.easeInOut(duration: 0.12)) {
                 isHovered = hovering
             }
         }
     }
 
-    @ViewBuilder
     private var statusIcon: some View {
-        switch workflow.workflowStatus {
-        case .running:
-            ZStack {
-                Circle()
-                    .fill(Color.orange.opacity(0.15))
-                    .frame(width: 32, height: 32)
-                
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.orange)
-            }
-        case .success:
-            ZStack {
-                Circle()
-                    .fill(Color.green.opacity(0.15))
-                    .frame(width: 32, height: 32)
-                
-                Image(systemName: "checkmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.green)
-            }
-        case .failure:
-            ZStack {
-                Circle()
-                    .fill(Color.red.opacity(0.15))
-                    .frame(width: 32, height: 32)
-                
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.red)
-            }
-        case .idle:
-            ZStack {
-                Circle()
-                    .fill(Color.gray.opacity(0.15))
-                    .frame(width: 32, height: 32)
-                
-                Image(systemName: "circle")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.gray)
-            }
+        ZStack {
+            Circle()
+                .fill(statusBackgroundColor)
+                .frame(width: 26, height: 26)
+            
+            Image(systemName: statusIconName)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(statusColor)
         }
     }
-    
-    @ViewBuilder
+
     private var statusBadge: some View {
+        Text(statusText)
+            .font(.system(size: 9, weight: .medium))
+            .foregroundStyle(statusColor)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                Capsule()
+                    .fill(statusBackgroundColor)
+            )
+    }
+
+    private var statusIconName: String {
         switch workflow.workflowStatus {
         case .running:
-            Text("Running")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.orange)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Color.orange.opacity(0.12))
-                .clipShape(Capsule())
+            return "arrow.clockwise"
         case .success:
-            Text("Success")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.green)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Color.green.opacity(0.12))
-                .clipShape(Capsule())
+            return "checkmark"
         case .failure:
-            Text("Failed")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.red)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Color.red.opacity(0.12))
-                .clipShape(Capsule())
+            return "xmark"
         case .idle:
-            Text("Idle")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Color.gray.opacity(0.12))
-                .clipShape(Capsule())
+            return "circle"
         }
+    }
+
+    private var statusText: String {
+        switch workflow.workflowStatus {
+        case .running:
+            return "Running"
+        case .success:
+            return "Success"
+        case .failure:
+            return "Failed"
+        case .idle:
+            return "Idle"
+        }
+    }
+
+    private var statusColor: Color {
+        switch workflow.workflowStatus {
+        case .running:
+            return .orange
+        case .success:
+            return .green
+        case .failure:
+            return .red
+        case .idle:
+            return .gray
+        }
+    }
+
+    private var statusBackgroundColor: Color {
+        statusColor.opacity(0.12)
     }
 }
