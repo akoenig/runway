@@ -67,9 +67,9 @@ final class AppViewModel: ObservableObject {
         return .idle
     }
 
-    /// Count shown next to the menu bar dot.
+    /// Count shown next to the menu bar dot — only running workflows.
     var activeWorkflowCount: Int {
-        recentWorkflows.count
+        workflows.filter { $0.workflowStatus == .running }.count
     }
 
     var statusText: String {
