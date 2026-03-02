@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "15.2"
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build
+        run: xcodebuild -project Initiated.xcodeproj -scheme Initiated -configuration Debug build
+
+      - name: Create archive
+        run: |
+          xcodebuild -project Initiated.xcodeproj \
+            -scheme Initiated \
+            -configuration Release \
+            -archivePath ./Initiated.xcarchive \
+            archive
+
+      - name: Create DMG
+        run: |
+          mkdir -p build/Applications
+          cp -R Initiated.xcarchive/Products/Applications/Initiated.app build/Applications/
+          
+          # Install create-dmg if needed
+          if ! command -v create-dmg &> /dev/null; then
+            brew install create-dmg
+          fi
+          
+          create-dmg \
+            --volname "Initiated-${{ steps.version.outputs.VERSION }}" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "Initiated.app" 150 185 \
+            --app-drop-link 450 185 \
+            "build/Initiated-${{ steps.version.outputs.VERSION }}.dmg" \
+            "build/"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Initiated-${{ steps.version.outputs.VERSION }}
+          path: build/Initiated-${{ steps.version.outputs.VERSION }}.dmg
+
+  release:
+    needs: build
+    runs-on: macos-14
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: .
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./*.dmg
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
