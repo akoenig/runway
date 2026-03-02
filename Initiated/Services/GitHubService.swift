@@ -111,7 +111,8 @@ final class GitHubService {
     }
 
     func fetchWorkflowRuns(for repo: Repository, perPage: Int = 5) async throws -> [WorkflowRun] {
-        let request = try createRequest(path: "/repos/\(repo.owner.login)/\(repo.name)/actions/runs?per_page=\(perPage)")
+        let ownerLogin = repo.owner?.login ?? "unknown"
+        let request = try createRequest(path: "/repos/\(ownerLogin)/\(repo.name)/actions/runs?per_page=\(perPage)")
 
         let (data, response) = try await session.data(for: request)
 
@@ -163,7 +164,7 @@ final class GitHubService {
         let repos = try await fetchUserRepos(perPage: 100)
         
         // Filter to only selected repos
-        let selectedRepos = repos.filter { selectedRepoNames.contains($0.fullName) }
+        let selectedRepos = repos.filter { selectedRepoNames.contains($0.displayFullName) }
         
         // Then fetch workflow runs for each selected repo
         var allRuns: [WorkflowRun] = []

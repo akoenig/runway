@@ -380,7 +380,7 @@ struct RepoSelectionView: View {
         if searchText.isEmpty {
             return viewModel.availableRepos
         }
-        return viewModel.availableRepos.filter { $0.fullName.localizedCaseInsensitiveContains(searchText) }
+        return viewModel.availableRepos.filter { $0.displayFullName.localizedCaseInsensitiveContains(searchText) }
     }
     
     var body: some View {
@@ -439,7 +439,7 @@ struct RepoSelectionView: View {
             // Select all/none buttons
             HStack {
                 Button {
-                    viewModel.selectedRepos = viewModel.availableRepos.map { $0.fullName }
+                    viewModel.selectedRepos = viewModel.availableRepos.map { $0.displayFullName }
                 } label: {
                     Text("Select All")
                         .font(.system(size: 12, weight: .medium))
@@ -511,7 +511,7 @@ struct RepoSelectionView: View {
                 Spacer()
             } else {
                 List {
-                    ForEach(filteredRepos, id: \.fullName) { repo in
+                    ForEach(filteredRepos, id: \.displayFullName) { repo in
                         Button {
                             toggleRepo(repo)
                         } label: {
@@ -528,7 +528,7 @@ struct RepoSelectionView: View {
                                 
                                 Spacer()
                                 
-                                if viewModel.selectedRepos.contains(repo.fullName) {
+                                if viewModel.selectedRepos.contains(repo.displayFullName) {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundStyle(.blue)
                                         .font(.system(size: 18))
@@ -580,10 +580,10 @@ struct RepoSelectionView: View {
     }
     
     private func toggleRepo(_ repo: Repository) {
-        if viewModel.selectedRepos.contains(repo.fullName) {
-            viewModel.selectedRepos.removeAll { $0 == repo.fullName }
+        if viewModel.selectedRepos.contains(repo.displayFullName) {
+            viewModel.selectedRepos.removeAll { $0 == repo.displayFullName }
         } else {
-            viewModel.selectedRepos.append(repo.fullName)
+            viewModel.selectedRepos.append(repo.displayFullName)
         }
     }
 }

@@ -122,11 +122,11 @@ final class AppViewModel: ObservableObject {
 
         do {
             let repos = try await GitHubService.shared.fetchUserRepos(perPage: 100)
-            availableRepos = repos.sorted { $0.fullName < $1.fullName }
+            availableRepos = repos.sorted { $0.displayFullName < $1.displayFullName }
             
             // If no repos selected yet, select all by default (frictionless)
             if selectedRepos.isEmpty {
-                selectedRepos = repos.map { $0.fullName }
+                selectedRepos = repos.map { $0.displayFullName }
             }
             
             isLoading = false
