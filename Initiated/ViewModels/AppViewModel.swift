@@ -14,6 +14,12 @@ final class AppViewModel: ObservableObject {
             restartPolling()
         }
     }
+    @Published var selectedRepos: [String] = [] {
+        didSet {
+            UserDefaults.standard.set(selectedRepos, forKey: "selectedRepos")
+        }
+    }
+    @Published var availableRepos: [Repository] = []
 
     var onWorkflowCompleted: ((WorkflowRun) -> Void)?
 
@@ -51,6 +57,10 @@ final class AppViewModel: ObservableObject {
         if stored > 0 {
             pollingInterval = stored
         }
+        
+        if let repos = UserDefaults.standard.array(forKey: "selectedRepos") as? [String] {
+            selectedRepos = repos
+        }
 
         loadSavedSettings()
     }
@@ -73,6 +83,7 @@ final class AppViewModel: ObservableObject {
 
     func saveSettings() {
         UserDefaults.standard.set(pollingInterval, forKey: "pollingInterval")
+        UserDefaults.standard.set(selectedRepos, forKey: "selectedRepos")
     }
 
     func startMonitoring() async {
@@ -105,14 +116,38 @@ final class AppViewModel: ObservableObject {
     }
 
     @MainActor
+    func fetchAvailableRepos() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let repos = try await GitHubService.shared.fetchUserRepos(perPage: 100)
+            availableRepos = repos.sorted { $0.fullName < $1.fullName }
+            
+            // If no repos selected yet, select all by default (frictionless)
+            if selectedRepos.isEmpty {
+                selectedRepos = repos.map { $0.fullName }
+            }
+            
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    @MainActor
     func fetchWorkflowRuns() async {
-        guard let user = githubUser else { return }
+        guard !selectedRepos.isEmpty else {
+            workflows = []
+            return
+        }
 
         isLoading = true
         errorMessage = nil
 
         do {
-            let runs = try await GitHubService.shared.fetchWorkflowRuns(actor: user.login)
+            let runs = try await GitHubService.shared.fetchWorkflowRuns(forSelectedRepos: selectedRepos, maxRuns: 10)
 
             let currentCompletedIds = Set(runs.filter { $0.workflowStatus == .failure || $0.workflowStatus == .success }.map { $0.id })
             let newlyCompleted = currentCompletedIds.subtracting(previousCompletedWorkflowIds)

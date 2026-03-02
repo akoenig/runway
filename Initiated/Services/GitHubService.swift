@@ -158,14 +158,17 @@ final class GitHubService {
         }
     }
 
-    func fetchWorkflowRuns(forActor actor: String, maxRuns: Int = 10) async throws -> [WorkflowRun] {
+    func fetchWorkflowRuns(forSelectedRepos selectedRepoNames: [String], maxRuns: Int = 10) async throws -> [WorkflowRun] {
         // First, get user's repos
-        let repos = try await fetchUserRepos(perPage: 10)
+        let repos = try await fetchUserRepos(perPage: 100)
         
-        // Then fetch workflow runs for each repo
+        // Filter to only selected repos
+        let selectedRepos = repos.filter { selectedRepoNames.contains($0.fullName) }
+        
+        // Then fetch workflow runs for each selected repo
         var allRuns: [WorkflowRun] = []
         
-        for repo in repos {
+        for repo in selectedRepos {
             do {
                 let runs = try await fetchWorkflowRuns(for: repo, perPage: 3)
                 allRuns.append(contentsOf: runs)

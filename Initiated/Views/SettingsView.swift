@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?
     @State private var showToken: Bool = false
+    @State private var showRepoSelection: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,6 +41,11 @@ struct SettingsView: View {
                     // Connection Section
                     connectionSection
                     
+                    // Repositories Section
+                    if viewModel.isAuthenticated {
+                        reposSection
+                    }
+                    
                     // Polling Section
                     pollingSection
                     
@@ -48,6 +54,9 @@ struct SettingsView: View {
                 }
                 .padding(20)
             }
+        }
+        .sheet(isPresented: $showRepoSelection) {
+            RepoSelectionView(viewModel: viewModel)
         }
     }
     
@@ -97,6 +106,8 @@ struct SettingsView: View {
                                 viewModel.isAuthenticated = false
                                 viewModel.githubUser = nil
                                 viewModel.workflows = []
+                                viewModel.selectedRepos = []
+                                viewModel.availableRepos = []
                             }
                         }
                     } label: {
@@ -187,6 +198,55 @@ struct SettingsView: View {
         )
     }
     
+    private var reposSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "folder.circle.fill")
+                    .foregroundStyle(.blue)
+                    .font(.system(size: 18))
+                
+                Text("Repositories")
+                    .font(.system(size: 14, weight: .semibold))
+                
+                Spacer()
+                
+                Text("\(viewModel.selectedRepos.count) selected")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Select which repositories to monitor for workflow runs.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                
+                Button {
+                    showRepoSelection = true
+                    Task {
+                        await viewModel.fetchAvailableRepos()
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "folder.badge.plus")
+                        Text("Manage Repositories")
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color.blue)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.secondary.opacity(0.05))
+        )
+    }
+    
     private var pollingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -259,7 +319,7 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
             
-            Text("Version 1.1.5")
+            Text("Version 1.1.7")
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
         }
@@ -292,6 +352,8 @@ struct SettingsView: View {
                 viewModel.isAuthenticated = true
                 viewModel.saveSettings()
                 Task {
+                    // Fetch repos after successful connection
+                    await viewModel.fetchAvailableRepos()
                     await viewModel.fetchWorkflowRuns()
                 }
             }
@@ -304,6 +366,196 @@ struct SettingsView: View {
 
         await MainActor.run {
             isLoading = false
+        }
+    }
+}
+
+struct RepoSelectionView: View {
+    @ObservedObject var viewModel: AppViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var searchText: String = ""
+    
+    var filteredRepos: [Repository] {
+        if searchText.isEmpty {
+            return viewModel.availableRepos
+        }
+        return viewModel.availableRepos.filter { $0.fullName.localizedCaseInsensitiveContains(searchText) }
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Select Repositories")
+                    .font(.system(size: 15, weight: .semibold))
+                
+                Spacer()
+                
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(Color.secondary.opacity(0.1))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(.ultraThinMaterial)
+            
+            // Search bar
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                    .font(.system(size: 14))
+                
+                TextField("Search repositories...", text: $searchText)
+                    .font(.system(size: 13))
+                    .textFieldStyle(.plain)
+                
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                            .font(.system(size: 14))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.secondary.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            
+            // Select all/none buttons
+            HStack {
+                Button {
+                    viewModel.selectedRepos = viewModel.availableRepos.map { $0.fullName }
+                } label: {
+                    Text("Select All")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.selectedRepos.count == viewModel.availableRepos.count)
+                
+                Spacer()
+                
+                Button {
+                    viewModel.selectedRepos = []
+                } label: {
+                    Text("Select None")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.selectedRepos.isEmpty)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+            
+            // Repo list
+            if viewModel.isLoading && viewModel.availableRepos.isEmpty {
+                Spacer()
+                ProgressView()
+                    .scaleEffect(1.2)
+                Spacer()
+            } else if viewModel.availableRepos.isEmpty {
+                Spacer()
+                VStack(spacing: 12) {
+                    Image(systemName: "folder.badge.questionmark")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.secondary)
+                    Text("No repositories found")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            } else {
+                List {
+                    ForEach(filteredRepos, id: \.fullName) { repo in
+                        Button {
+                            toggleRepo(repo)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(repo.name)
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundStyle(.primary)
+                                    
+                                    if let owner = repo.owner.login {
+                                        Text(owner)
+                                            .font(.system(size: 11))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                if viewModel.selectedRepos.contains(repo.fullName) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.blue)
+                                        .font(.system(size: 18))
+                                } else {
+                                    Circle()
+                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1.5)
+                                        .frame(width: 18, height: 18)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
+                    }
+                }
+                .listStyle(.plain)
+            }
+            
+            // Footer
+            HStack {
+                Text("\(viewModel.selectedRepos.count) of \(viewModel.availableRepos.count) selected")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                
+                Spacer()
+                
+                Button {
+                    dismiss()
+                    Task {
+                        await viewModel.fetchWorkflowRuns()
+                    }
+                } label: {
+                    Text("Done")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                        .background(viewModel.selectedRepos.isEmpty ? Color.blue.opacity(0.5) : Color.blue)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(.ultraThinMaterial)
+        }
+        .frame(width: 400, height: 500)
+    }
+    
+    private func toggleRepo(_ repo: Repository) {
+        if viewModel.selectedRepos.contains(repo.fullName) {
+            viewModel.selectedRepos.removeAll { $0 == repo.fullName }
+        } else {
+            viewModel.selectedRepos.append(repo.fullName)
         }
     }
 }
