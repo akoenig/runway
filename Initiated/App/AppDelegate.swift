@@ -7,18 +7,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var eventMonitor: Any?
-    
+
     private let viewModel = AppViewModel()
     private let notificationService = NotificationService()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide the main window immediately
         NSApp.windows.first?.close()
-        
+
         setupMenuBar()
         setupNotifications()
         setupEventMonitor()
-        
+
         Task {
             await viewModel.startMonitoring()
         }
@@ -33,9 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Initiated")
-            button.image?.isTemplate = false
-            button.contentTintColor = .systemGray
+            button.image = makeStatusDot(color: .systemGray)
             button.action = #selector(togglePopover)
             button.target = self
         }
@@ -49,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupNotifications() {
         notificationService.requestAuthorization()
-        
+
         viewModel.onWorkflowCompleted = { [weak self] workflow in
             self?.notificationService.sendNotification(for: workflow)
         }
@@ -83,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func updateStatusIcon(status: WorkflowStatus) {
         guard let button = statusItem?.button else { return }
-        
+
         let color: NSColor = switch status {
         case .idle:
             .systemGray
@@ -94,11 +92,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .failure:
             .systemRed
         }
-        
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.3
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            button.contentTintColor = color
+
+        button.image = makeStatusDot(color: color)
+    }
+
+    /// Draws a small colored circle suitable for the menu bar.
+    /// The dot is 8pt within an 18x18 canvas so it sits nicely
+    /// alongside other menu bar items.
+    private func makeStatusDot(color: NSColor) -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let image = NSImage(size: size, flipped: false) { bounds in
+            let dotSize: CGFloat = 8
+            let origin = CGPoint(
+                x: (bounds.width - dotSize) / 2,
+                y: (bounds.height - dotSize) / 2
+            )
+            let dotRect = NSRect(origin: origin, size: NSSize(width: dotSize, height: dotSize))
+            color.setFill()
+            NSBezierPath(ovalIn: dotRect).fill()
+            return true
         }
+        image.isTemplate = false
+        return image
     }
 }
