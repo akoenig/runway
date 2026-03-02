@@ -30,6 +30,10 @@ final class AppViewModel: ObservableObject {
 
     private var monitoringTask: Task<Void, Never>?
     private var previousCompletedWorkflowIds: Set<Int> = []
+    /// True until the first successful fetch completes. The first fetch seeds
+    /// `previousCompletedWorkflowIds` without firing notifications so the user
+    /// isn't spammed with stale completions on every launch.
+    private var isFirstFetch: Bool = true
 
     /// Tracks the in-flight user validation so startMonitoring() can await it.
     private var userValidationTask: Task<Void, Never>?
@@ -178,11 +182,16 @@ final class AppViewModel: ObservableObject {
             let runs = try await GitHubService.shared.fetchWorkflowRuns(forSelectedRepos: selectedRepos, maxRuns: 10)
 
             let currentCompletedIds = Set(runs.filter { $0.workflowStatus == .failure || $0.workflowStatus == .success }.map { $0.id })
-            let newlyCompleted = currentCompletedIds.subtracting(previousCompletedWorkflowIds)
 
-            for completedId in newlyCompleted {
-                if let workflow = runs.first(where: { $0.id == completedId }) {
-                    onWorkflowCompleted?(workflow)
+            if isFirstFetch {
+                // Seed the set on first fetch — don't notify for pre-existing completions.
+                isFirstFetch = false
+            } else {
+                let newlyCompleted = currentCompletedIds.subtracting(previousCompletedWorkflowIds)
+                for completedId in newlyCompleted {
+                    if let workflow = runs.first(where: { $0.id == completedId }) {
+                        onWorkflowCompleted?(workflow)
+                    }
                 }
             }
 
