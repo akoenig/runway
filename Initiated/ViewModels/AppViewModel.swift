@@ -1,14 +1,14 @@
 import Foundation
 import AppKit
+import Combine
 
-@Observable
-final class AppViewModel {
-    var workflows: [WorkflowRun] = []
-    var isLoading: Bool = false
-    var errorMessage: String?
-    var githubUser: GitHubUser?
-    var isAuthenticated: Bool = false
-    var pollingInterval: Int = 30 {
+final class AppViewModel: ObservableObject {
+    @Published var workflows: [WorkflowRun] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String?
+    @Published var githubUser: GitHubUser?
+    @Published var isAuthenticated: Bool = false
+    @Published var pollingInterval: Int = 30 {
         didSet {
             UserDefaults.standard.set(pollingInterval, forKey: "pollingInterval")
             restartPolling()
@@ -75,7 +75,6 @@ final class AppViewModel {
         UserDefaults.standard.set(pollingInterval, forKey: "pollingInterval")
     }
 
-    @MainActor
     func startMonitoring() async {
         guard isAuthenticated, githubUser != nil else { return }
 
@@ -91,7 +90,7 @@ final class AppViewModel {
     private func startPolling() {
         monitoringTask?.cancel()
 
-        monitoringTask = Task { @MainActor in
+        monitoringTask = Task {
             while !Task.isCancelled {
                 await fetchWorkflowRuns()
                 try? await Task.sleep(nanoseconds: UInt64(pollingInterval) * 1_000_000_000)
@@ -135,10 +134,9 @@ final class AppViewModel {
         }
     }
 
+    @MainActor
     private func updateStatusIcon() {
-        Task { @MainActor in
-            guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
-            appDelegate.updateStatusIcon(status: self.overallStatus)
-        }
+        guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
+        appDelegate.updateStatusIcon(status: overallStatus)
     }
 }

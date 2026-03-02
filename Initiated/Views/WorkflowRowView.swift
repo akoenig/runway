@@ -54,7 +54,8 @@ struct WorkflowRowView: View {
         case .running:
             Image(systemName: "arrow.clockwise")
                 .foregroundStyle(.orange)
-                .symbolEffect(.rotate)
+                .rotationEffect(.degrees(workflow.workflowStatus == .running ? 360 : 0))
+                .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: workflow.workflowStatus)
         case .success:
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
