@@ -13,81 +13,65 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            headerSection
-            Divider().opacity(0.4)
-
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 16) {
+                VStack(spacing: 0) {
                     connectionSection
                     if viewModel.isAuthenticated {
                         reposSection
                     }
                     pollingSection
                     shortcutSection
-                    footerSection
+                    quitSection
                 }
-                .padding(14)
+                .padding(.vertical, 8)
             }
+
+            Divider().opacity(0.3)
+            footerBar
         }
         .sheet(isPresented: $showRepoSelection) {
             RepoSelectionView(viewModel: viewModel)
         }
     }
 
-    // MARK: - Header
-
-    private var headerSection: some View {
-        HStack {
-            Text("Settings")
-                .font(.system(size: 13, weight: .semibold))
-
-            Spacer()
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    showSettings = false
-                }
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 22, height: 22)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.06))
-                    )
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-    }
-
     // MARK: - Connection
 
     private var connectionSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("GitHub", systemImage: "link")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(title: "GitHub")
 
             if viewModel.isAuthenticated {
-                connectedCard
+                connectedRow
             } else {
-                tokenInputCard
+                tokenInputSection
             }
         }
     }
 
-    private var connectedCard: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
+    private var connectedRow: some View {
+        HStack(spacing: 12) {
+            // Avatar placeholder
+            ZStack {
+                Circle()
+                    .fill(Color.green.opacity(0.15))
+                    .frame(width: 32, height: 32)
+
+                Circle()
+                    .stroke(Color.green.opacity(0.4), lineWidth: 1.5)
+                    .frame(width: 32, height: 32)
+
+                Text(String((viewModel.githubUser?.login ?? "?").prefix(1)).uppercased())
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.green)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
                 if let login = viewModel.githubUser?.login {
-                    Text("@\(login)")
-                        .font(.system(size: 12, weight: .medium))
+                    Text(login)
+                        .font(.system(size: 13, weight: .semibold))
                 }
                 Text("Connected")
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(.green)
             }
 
@@ -108,21 +92,14 @@ struct SettingsView: View {
                 Text("Disconnect")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.red)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.red.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.primary.opacity(0.03))
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 
-    private var tokenInputCard: some View {
+    private var tokenInputSection: some View {
         VStack(spacing: 10) {
             HStack(spacing: 6) {
                 Group {
@@ -168,8 +145,6 @@ struct SettingsView: View {
                             .scaleEffect(0.6)
                             .tint(.white)
                     } else {
-                        Image(systemName: "link")
-                            .font(.system(size: 10))
                         Text("Connect")
                     }
                 }
@@ -178,69 +153,68 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
                 .background(patInput.isEmpty ? Color.accentColor.opacity(0.4) : Color.accentColor)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: 7))
             }
             .buttonStyle(.plain)
             .disabled(patInput.isEmpty || isLoading)
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.primary.opacity(0.03))
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
     }
 
     // MARK: - Repositories
 
     private var reposSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Repositories", systemImage: "folder")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(title: "Repositories")
 
-            HStack {
-                Text("\(viewModel.selectedRepos.count) monitored")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.primary)
-
-                Spacer()
-
-                Button {
-                    viewModel.errorMessage = nil
-                    showRepoSelection = true
-                    Task {
-                        await viewModel.fetchAvailableRepos()
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text("Manage")
-                            .font(.system(size: 11, weight: .medium))
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 8, weight: .semibold))
-                    }
-                    .foregroundStyle(Color.accentColor)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.accentColor.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            Button {
+                viewModel.errorMessage = nil
+                showRepoSelection = true
+                Task {
+                    await viewModel.fetchAvailableRepos()
                 }
-                .buttonStyle(.plain)
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 7)
+                            .fill(Color.accentColor.opacity(0.12))
+                            .frame(width: 32, height: 32)
+
+                        Image(systemName: "folder")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Color.accentColor)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(viewModel.selectedRepos.count) monitored")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.primary)
+
+                        Text("Tap to manage")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.quaternary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
             }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.primary.opacity(0.03))
-            )
+            .buttonStyle(.plain)
         }
     }
 
     // MARK: - Polling
 
     private var pollingSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Update Frequency", systemImage: "clock.arrow.circlepath")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(title: "Update Frequency")
 
             HStack(spacing: 4) {
                 ForEach([15, 30, 60, 120], id: \.self) { interval in
@@ -248,32 +222,32 @@ struct SettingsView: View {
                         viewModel.pollingInterval = interval
                     } label: {
                         Text(shortInterval(interval))
-                            .font(.system(size: 11, weight: viewModel.pollingInterval == interval ? .semibold : .regular))
+                            .font(.system(size: 12, weight: viewModel.pollingInterval == interval ? .semibold : .regular))
                             .foregroundStyle(viewModel.pollingInterval == interval ? .white : .secondary)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
+                            .padding(.vertical, 7)
                             .background(
-                                RoundedRectangle(cornerRadius: 6)
+                                RoundedRectangle(cornerRadius: 7)
                                     .fill(viewModel.pollingInterval == interval ? Color.accentColor : Color.primary.opacity(0.04))
                             )
                     }
                     .buttonStyle(.plain)
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
         }
     }
 
     // MARK: - Keyboard Shortcut
 
     private var shortcutSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Keyboard Shortcut", systemImage: "keyboard")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(title: "Keyboard Shortcut")
 
             HStack {
                 if shortcutRecorder.isRecording {
-                    Text("Type shortcut...")
+                    Text("Press a key combination...")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
 
@@ -289,7 +263,11 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 } else if viewModel.shortcutKeyCode >= 0 {
                     Text(viewModel.shortcutDisplayString)
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.primary.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
 
                     Spacer()
 
@@ -335,39 +313,77 @@ struct SettingsView: View {
                     Spacer()
                 }
             }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.primary.opacity(shortcutRecorder.isRecording ? 0.06 : 0.03))
-            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
     }
 
-    // MARK: - Footer
+    // MARK: - Quit
 
-    private var footerSection: some View {
-        VStack(spacing: 10) {
+    private var quitSection: some View {
+        VStack(spacing: 0) {
+            Divider().opacity(0.2).padding(.horizontal, 16)
+
             Button {
                 NSApp.terminate(nil)
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Image(systemName: "power")
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                     Text("Quit Initiated")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundStyle(.red)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 7)
-                .background(Color.red.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.top, 8)
+    }
+
+    // MARK: - Footer Bar
+
+    private var footerBar: some View {
+        HStack {
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    showSettings = false
+                }
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
-            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
-                .font(.system(size: 10))
+            Spacer()
+
+            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
+                .font(.system(size: 11))
                 .foregroundStyle(.quaternary)
+
+            Spacer()
+
+            // Invisible spacer to balance the back button
+            Color.clear.frame(width: 32, height: 32)
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - Shared Components
+
+    private func sectionHeader(title: String) -> some View {
+        Text(title)
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 6)
     }
 
     // MARK: - Helpers
@@ -400,8 +416,6 @@ struct SettingsView: View {
                 }
             }
 
-            // Start monitoring in background — the main view will show
-            // a loading state until workflows arrive.
             await viewModel.startMonitoring()
         } catch {
             await MainActor.run {
@@ -432,7 +446,7 @@ struct RepoSelectionView: View {
             // Header
             HStack {
                 Text("Repositories")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 15, weight: .bold))
 
                 Spacer()
 
@@ -440,7 +454,7 @@ struct RepoSelectionView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 22, height: 22)
+                        .frame(width: 24, height: 24)
                         .background(Color.primary.opacity(0.06))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
@@ -448,8 +462,6 @@ struct RepoSelectionView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-
-            Divider().opacity(0.4)
 
             // Search
             HStack(spacing: 8) {
@@ -477,7 +489,9 @@ struct RepoSelectionView: View {
             .background(Color.primary.opacity(0.04))
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.bottom, 10)
+
+            Divider().opacity(0.3)
 
             // Bulk actions
             HStack {
@@ -511,13 +525,13 @@ struct RepoSelectionView: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 8)
+            .padding(.vertical, 8)
 
-            Divider().opacity(0.3)
+            Divider().opacity(0.2)
 
             // List
             repoListContent
-            
+
             Divider().opacity(0.3)
 
             // Done
@@ -533,10 +547,10 @@ struct RepoSelectionView: View {
                     Text("Done")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 18)
+                        .padding(.horizontal, 20)
                         .padding(.vertical, 7)
                         .background(viewModel.selectedRepos.isEmpty ? Color.accentColor.opacity(0.4) : Color.accentColor)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
                 }
                 .buttonStyle(.plain)
             }
@@ -588,14 +602,14 @@ struct RepoSelectionView: View {
             List {
                 ForEach(filteredRepos, id: \.displayFullName) { repo in
                     Button { toggleRepo(repo) } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text(repo.name)
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.system(size: 13, weight: .medium))
                                     .foregroundStyle(.primary)
 
                                 Text(repo.owner?.login ?? "unknown")
-                                    .font(.system(size: 10))
+                                    .font(.system(size: 11))
                                     .foregroundStyle(.tertiary)
                             }
 
@@ -604,18 +618,18 @@ struct RepoSelectionView: View {
                             if viewModel.selectedRepos.contains(repo.displayFullName) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundStyle(Color.accentColor)
-                                    .font(.system(size: 16))
+                                    .font(.system(size: 18))
                             } else {
                                 Circle()
-                                    .stroke(Color.primary.opacity(0.15), lineWidth: 1.5)
-                                    .frame(width: 16, height: 16)
+                                    .stroke(Color.primary.opacity(0.12), lineWidth: 1.5)
+                                    .frame(width: 18, height: 18)
                             }
                         }
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                 }
             }
             .listStyle(.plain)
@@ -684,16 +698,16 @@ final class ShortcutRecorder: ObservableObject {
 
     private static func displayString(for keyCode: UInt16, characters: String?) -> String {
         switch keyCode {
-        case 36: return "↩"     // Return
-        case 48: return "⇥"     // Tab
+        case 36: return "\u{21A9}"     // Return
+        case 48: return "\u{21E5}"     // Tab
         case 49: return "Space"
-        case 51: return "⌫"     // Delete
-        case 53: return "⎋"     // Escape
-        case 76: return "⌤"     // Enter (numpad)
-        case 123: return "←"
-        case 124: return "→"
-        case 125: return "↓"
-        case 126: return "↑"
+        case 51: return "\u{232B}"     // Delete
+        case 53: return "\u{238B}"     // Escape
+        case 76: return "\u{2324}"     // Enter (numpad)
+        case 123: return "\u{2190}"
+        case 124: return "\u{2192}"
+        case 125: return "\u{2193}"
+        case 126: return "\u{2191}"
         // F-keys
         case 122: return "F1"
         case 120: return "F2"

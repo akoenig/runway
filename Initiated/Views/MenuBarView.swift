@@ -12,50 +12,15 @@ struct MenuBarView: View {
                 mainContent
             }
         }
-        .frame(width: 300, height: 360)
+        .frame(width: 340, height: 420)
     }
 
     private var mainContent: some View {
         VStack(spacing: 0) {
-            headerSection
-            Divider().opacity(0.4)
             contentSection
-            Divider().opacity(0.4)
-            footerSection
+            Divider().opacity(0.3)
+            footerBar
         }
-    }
-
-    // MARK: - Header
-
-    private var headerSection: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 7, height: 7)
-
-            Text("Initiated")
-                .font(.system(size: 13, weight: .semibold))
-
-            Spacer()
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    showSettings.toggle()
-                }
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.05))
-                    )
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
     }
 
     // MARK: - Content
@@ -75,20 +40,142 @@ struct MenuBarView: View {
         }
     }
 
+    // MARK: - Workflow List (grouped by status)
+
+    private var runningWorkflows: [WorkflowRun] {
+        viewModel.workflows.filter { $0.workflowStatus == .running }
+    }
+
+    private var recentWorkflows: [WorkflowRun] {
+        viewModel.workflows.filter { $0.workflowStatus != .running }
+    }
+
+    private var workflowListView: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 0) {
+                // Running section
+                if !runningWorkflows.isEmpty {
+                    sectionHeader(title: "Running", count: runningWorkflows.count)
+
+                    ForEach(runningWorkflows) { workflow in
+                        WorkflowRowView(workflow: workflow) {
+                            if let url = URL(string: workflow.htmlUrl) {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                    }
+                }
+
+                // Recent section
+                if !recentWorkflows.isEmpty {
+                    sectionHeader(title: "Recent", count: nil)
+
+                    ForEach(recentWorkflows) { workflow in
+                        WorkflowRowView(workflow: workflow) {
+                            if let url = URL(string: workflow.htmlUrl) {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+        }
+    }
+
+    private func sectionHeader(title: String, count: Int?) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.primary)
+
+            if let count = count {
+                Text("\(count)")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1)
+                    .background(
+                        Capsule()
+                            .fill(Color.primary.opacity(0.07))
+                    )
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 6)
+    }
+
+    // MARK: - Footer Bar
+
+    private var footerBar: some View {
+        HStack(spacing: 0) {
+            // Refresh button
+            Button {
+                Task {
+                    await viewModel.fetchWorkflowRuns()
+                }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(viewModel.isLoading ? .quaternary : .secondary)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.isLoading)
+
+            Spacer()
+
+            // Status
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 6, height: 6)
+
+                Text(viewModel.statusText)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer()
+
+            // Settings button
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    showSettings.toggle()
+                }
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - Empty States
+
     private var notAuthenticatedView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             Spacer()
 
             Image(systemName: "person.crop.circle.badge.questionmark")
-                .font(.system(size: 28, weight: .light))
+                .font(.system(size: 32, weight: .light))
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 4) {
                 Text("Connect GitHub")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 14, weight: .semibold))
 
                 Text("Open settings to link your account")
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
             }
 
@@ -98,12 +185,12 @@ struct MenuBarView: View {
                 }
             } label: {
                 Text("Open Settings")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 7)
                     .background(Color.accentColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .clipShape(RoundedRectangle(cornerRadius: 7))
             }
             .buttonStyle(.plain)
 
@@ -112,15 +199,15 @@ struct MenuBarView: View {
     }
 
     private var loadingView: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             Spacer()
 
             ProgressView()
-                .scaleEffect(0.7)
+                .scaleEffect(0.8)
                 .tint(.secondary)
 
             Text("Loading workflows...")
-                .font(.system(size: 11))
+                .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
 
             Spacer()
@@ -128,19 +215,19 @@ struct MenuBarView: View {
     }
 
     private func errorView(message: String) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             Spacer()
 
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 24, weight: .light))
+                .font(.system(size: 28, weight: .light))
                 .foregroundStyle(.orange)
 
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 Text("Something went wrong")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 13, weight: .semibold))
 
                 Text(message)
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
@@ -152,104 +239,35 @@ struct MenuBarView: View {
                 }
             } label: {
                 Text("Retry")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.accentColor)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.accentColor.opacity(0.1))
-                    )
             }
             .buttonStyle(.plain)
 
             Spacer()
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 20)
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             Spacer()
 
             Image(systemName: "checkmark.circle")
-                .font(.system(size: 28, weight: .light))
+                .font(.system(size: 32, weight: .light))
                 .foregroundStyle(.green)
 
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 Text("All clear")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 14, weight: .semibold))
 
                 Text("No active workflow runs")
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
             }
 
             Spacer()
         }
-    }
-
-    private var workflowListView: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(spacing: 0) {
-                ForEach(Array(viewModel.workflows.enumerated()), id: \.element.id) { index, workflow in
-                    WorkflowRowView(workflow: workflow) {
-                        if let url = URL(string: workflow.htmlUrl) {
-                            NSWorkspace.shared.open(url)
-                        }
-                    }
-
-                    if index < viewModel.workflows.count - 1 {
-                        Divider()
-                            .padding(.leading, 30)
-                            .opacity(0.3)
-                    }
-                }
-            }
-            .padding(.vertical, 4)
-        }
-    }
-
-    // MARK: - Footer
-
-    private var footerSection: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 5, height: 5)
-
-            Text(viewModel.statusText)
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
-
-            Spacer()
-
-            Button {
-                Task {
-                    await viewModel.fetchWorkflowRuns()
-                }
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(viewModel.isLoading ? .quaternary : .secondary)
-                    .frame(width: 22, height: 22)
-                    .background(
-                        RoundedRectangle(cornerRadius: 5)
-                            .fill(Color.primary.opacity(0.04))
-                    )
-            }
-            .buttonStyle(.plain)
-            .disabled(viewModel.isLoading)
-            .rotationEffect(.degrees(viewModel.isLoading ? 360 : 0))
-            .animation(
-                viewModel.isLoading
-                    ? .linear(duration: 1).repeatForever(autoreverses: false)
-                    : .default,
-                value: viewModel.isLoading
-            )
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
     }
 
     // MARK: - Helpers

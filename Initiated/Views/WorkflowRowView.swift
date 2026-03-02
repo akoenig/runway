@@ -8,30 +8,44 @@ struct WorkflowRowView: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 10) {
-                // Status dot
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 6, height: 6)
+            HStack(spacing: 12) {
+                // Status indicator — larger ring with inner dot
+                ZStack {
+                    Circle()
+                        .stroke(statusColor.opacity(0.25), lineWidth: 2)
+                        .frame(width: 28, height: 28)
+
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 10, height: 10)
+
+                    // Pulse animation for running workflows
+                    if workflow.workflowStatus == .running {
+                        Circle()
+                            .stroke(statusColor.opacity(0.4), lineWidth: 1.5)
+                            .frame(width: 28, height: 28)
+                            .scaleEffect(isHovered ? 1.15 : 1.0)
+                    }
+                }
 
                 // Workflow info
                 VStack(alignment: .leading, spacing: 2) {
                     Text(workflow.name)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
-                    HStack(spacing: 0) {
+                    HStack(spacing: 4) {
                         Text(workflow.repository.name)
-                            .font(.system(size: 10))
+                            .font(.system(size: 11))
                             .foregroundStyle(.secondary)
 
-                        Text(" \u{00B7} ")
-                            .font(.system(size: 10))
+                        Text("\u{2022}")
+                            .font(.system(size: 7))
                             .foregroundStyle(.quaternary)
 
                         Text(workflow.headBranch)
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(.system(size: 11))
                             .foregroundStyle(.tertiary)
                     }
                     .lineLimit(1)
@@ -41,20 +55,20 @@ struct WorkflowRowView: View {
 
                 // Timestamp
                 Text(workflow.formattedDate)
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isHovered ? Color.primary.opacity(0.04) : Color.clear)
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isHovered ? Color.primary.opacity(0.05) : Color.clear)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.12)) {
+            withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hovering
             }
         }
