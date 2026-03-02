@@ -56,9 +56,10 @@ struct Repository: Codable, Equatable {
     let name: String
     let fullName: String
     let htmlUrl: String
+    let owner: GitHubUser
 
     enum CodingKeys: String, CodingKey {
-        case id, name
+        case id, name, owner
         case fullName = "full_name"
         case htmlUrl = "html_url"
     }

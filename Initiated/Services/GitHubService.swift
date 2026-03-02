@@ -84,11 +84,34 @@ final class GitHubService {
         }
     }
 
-    func fetchWorkflowRuns(actor: String, perPage: Int = 10) async throws -> [WorkflowRun] {
-        let encodedActor = actor.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? actor
-        let path = "/users/\(encodedActor)/actions/runs?per_page=\(perPage)"
+    func fetchUserRepos(perPage: Int = 10) async throws -> [Repository] {
+        let request = try createRequest(path: "/user/repos?sort=updated&per_page=\(perPage)")
 
-        let request = try createRequest(path: path)
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw GitHubAPIError.invalidResponse
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            let message = String(data: data, encoding: .utf8)
+            throw GitHubAPIError.httpError(statusCode: httpResponse.statusCode, message: message)
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            return try decoder.decode([Repository].self, from: data)
+        } catch {
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Failed to decode repos response: \(jsonString)")
+            }
+            throw GitHubAPIError.decodingError(error)
+        }
+    }
+
+    func fetchWorkflowRuns(for repo: Repository, perPage: Int = 5) async throws -> [WorkflowRun] {
+        let request = try createRequest(path: "/repos/\(repo.owner.login)/\(repo.name)/actions/runs?per_page=\(perPage)")
 
         let (data, response) = try await session.data(for: request)
 
@@ -128,7 +151,32 @@ final class GitHubService {
             let runsResponse = try decoder.decode(WorkflowRunsResponse.self, from: data)
             return runsResponse.workflowRuns
         } catch {
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Failed to decode workflow runs response: \(jsonString)")
+            }
             throw GitHubAPIError.decodingError(error)
         }
+    }
+
+    func fetchWorkflowRuns(forActor actor: String, maxRuns: Int = 10) async throws -> [WorkflowRun] {
+        // First, get user's repos
+        let repos = try await fetchUserRepos(perPage: 10)
+        
+        // Then fetch workflow runs for each repo
+        var allRuns: [WorkflowRun] = []
+        
+        for repo in repos {
+            do {
+                let runs = try await fetchWorkflowRuns(for: repo, perPage: 3)
+                allRuns.append(contentsOf: runs)
+            } catch {
+                // Skip repos that don't have workflows
+                continue
+            }
+        }
+        
+        // Sort by created date (newest first) and limit
+        allRuns.sort { $0.createdAt > $1.createdAt }
+        return Array(allRuns.prefix(maxRuns))
     }
 }
