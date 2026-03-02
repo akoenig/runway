@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SettingsView: View {
@@ -8,6 +9,7 @@ struct SettingsView: View {
     @State private var errorMessage: String?
     @State private var showToken: Bool = false
     @State private var showRepoSelection: Bool = false
+    @StateObject private var shortcutRecorder = ShortcutRecorder()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,6 +23,7 @@ struct SettingsView: View {
                         reposSection
                     }
                     pollingSection
+                    shortcutSection
                     footerSection
                 }
                 .padding(14)
@@ -257,6 +260,86 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 }
             }
+        }
+    }
+
+    // MARK: - Keyboard Shortcut
+
+    private var shortcutSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Keyboard Shortcut", systemImage: "keyboard")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+
+            HStack {
+                if shortcutRecorder.isRecording {
+                    Text("Type shortcut...")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Button {
+                        shortcutRecorder.stopRecording()
+                    } label: {
+                        Text("Cancel")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                } else if viewModel.shortcutKeyCode >= 0 {
+                    Text(viewModel.shortcutDisplayString)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+
+                    Spacer()
+
+                    Button {
+                        shortcutRecorder.startRecording { keyCode, flags, displayChar in
+                            viewModel.setShortcut(
+                                keyCode: Int(keyCode),
+                                modifiers: Int(flags.rawValue),
+                                keyChar: displayChar
+                            )
+                        }
+                    } label: {
+                        Text("Change")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        viewModel.clearShortcut()
+                    } label: {
+                        Text("Clear")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button {
+                        shortcutRecorder.startRecording { keyCode, flags, displayChar in
+                            viewModel.setShortcut(
+                                keyCode: Int(keyCode),
+                                modifiers: Int(flags.rawValue),
+                                keyChar: displayChar
+                            )
+                        }
+                    } label: {
+                        Text("Record Shortcut")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+                }
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.primary.opacity(shortcutRecorder.isRecording ? 0.06 : 0.03))
+            )
         }
     }
 
@@ -544,6 +627,88 @@ struct RepoSelectionView: View {
             viewModel.selectedRepos.removeAll { $0 == repo.displayFullName }
         } else {
             viewModel.selectedRepos.append(repo.displayFullName)
+        }
+    }
+}
+
+// MARK: - Shortcut Recorder
+
+final class ShortcutRecorder: ObservableObject {
+    @Published var isRecording: Bool = false
+
+    private var monitor: Any?
+    private var completion: ((UInt16, NSEvent.ModifierFlags, String) -> Void)?
+
+    func startRecording(completion: @escaping (UInt16, NSEvent.ModifierFlags, String) -> Void) {
+        self.completion = completion
+        isRecording = true
+
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+
+            // Escape cancels recording
+            if event.keyCode == 53 {
+                self.stopRecording()
+                return nil
+            }
+
+            // Require at least one modifier (Cmd, Opt, Ctrl, Shift)
+            let required: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+            guard !event.modifierFlags.intersection(required).isEmpty else {
+                return nil
+            }
+
+            let displayChar = Self.displayString(for: event.keyCode, characters: event.charactersIgnoringModifiers)
+            self.completion?(event.keyCode, event.modifierFlags.intersection(required), displayChar)
+            self.stopRecording()
+            return nil
+        }
+    }
+
+    func stopRecording() {
+        if let monitor = monitor {
+            NSEvent.removeMonitor(monitor)
+            self.monitor = nil
+        }
+        isRecording = false
+        completion = nil
+    }
+
+    deinit {
+        if let monitor = monitor {
+            NSEvent.removeMonitor(monitor)
+        }
+    }
+
+    // MARK: - Key Display Names
+
+    private static func displayString(for keyCode: UInt16, characters: String?) -> String {
+        switch keyCode {
+        case 36: return "↩"     // Return
+        case 48: return "⇥"     // Tab
+        case 49: return "Space"
+        case 51: return "⌫"     // Delete
+        case 53: return "⎋"     // Escape
+        case 76: return "⌤"     // Enter (numpad)
+        case 123: return "←"
+        case 124: return "→"
+        case 125: return "↓"
+        case 126: return "↑"
+        // F-keys
+        case 122: return "F1"
+        case 120: return "F2"
+        case 99: return "F3"
+        case 118: return "F4"
+        case 96: return "F5"
+        case 97: return "F6"
+        case 98: return "F7"
+        case 100: return "F8"
+        case 101: return "F9"
+        case 109: return "F10"
+        case 103: return "F11"
+        case 111: return "F12"
+        default:
+            return characters?.uppercased() ?? "?"
         }
     }
 }

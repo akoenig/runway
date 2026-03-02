@@ -1,12 +1,31 @@
 import AppKit
+import Carbon
 import SwiftUI
 import UserNotifications
+
+/// File-scope C-compatible callback for Carbon hotkey events.
+/// Posts a notification so the @MainActor AppDelegate can handle it
+/// without crossing actor boundaries from the C callback.
+private func hotkeyCallback(
+    _: EventHandlerCallRef?,
+    _: EventRef?,
+    _: UnsafeMutableRawPointer?
+) -> OSStatus {
+    NotificationCenter.default.post(name: .hotkeyToggle, object: nil)
+    return noErr
+}
+
+private extension Notification.Name {
+    static let hotkeyToggle = Notification.Name("com.initiated.hotkeyToggle")
+}
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var eventMonitor: Any?
+    private var hotkeyRef: EventHotKeyRef?
+    private var hotkeyHandler: EventHandlerRef?
 
     private let viewModel = AppViewModel()
     private let notificationService = NotificationService()
@@ -18,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupMenuBar()
         setupNotifications()
         setupEventMonitor()
+        setupHotkey()
 
         Task {
             await viewModel.startMonitoring()
@@ -27,6 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         viewModel.stopMonitoring()
         removeEventMonitor()
+        unregisterHotkey()
     }
 
     private func setupMenuBar() {
@@ -67,6 +88,79 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             eventMonitor = nil
         }
     }
+
+    // MARK: - Global Hotkey
+
+    private func setupHotkey() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(togglePopover),
+            name: .hotkeyToggle,
+            object: nil
+        )
+
+        viewModel.onShortcutChanged = { [weak self] in
+            self?.registerHotkey()
+        }
+
+        registerHotkey()
+    }
+
+    private func registerHotkey() {
+        unregisterHotkey()
+
+        let keyCode = viewModel.shortcutKeyCode
+        let modifiers = viewModel.shortcutModifiers
+        guard keyCode >= 0 else { return }
+
+        var eventType = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed)
+        )
+
+        InstallEventHandler(
+            GetApplicationEventTarget(),
+            hotkeyCallback,
+            1,
+            &eventType,
+            nil,
+            &hotkeyHandler
+        )
+
+        var hotKeyID = EventHotKeyID(signature: 0x494E4954, id: 1)
+
+        RegisterEventHotKey(
+            UInt32(keyCode),
+            carbonFlags(from: modifiers),
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &hotkeyRef
+        )
+    }
+
+    private func unregisterHotkey() {
+        if let ref = hotkeyRef {
+            UnregisterEventHotKey(ref)
+            hotkeyRef = nil
+        }
+        if let handler = hotkeyHandler {
+            RemoveEventHandler(handler)
+            hotkeyHandler = nil
+        }
+    }
+
+    private func carbonFlags(from cocoaModifiers: Int) -> UInt32 {
+        let flags = NSEvent.ModifierFlags(rawValue: UInt(cocoaModifiers))
+        var carbon: UInt32 = 0
+        if flags.contains(.command) { carbon |= UInt32(cmdKey) }
+        if flags.contains(.option) { carbon |= UInt32(optionKey) }
+        if flags.contains(.control) { carbon |= UInt32(controlKey) }
+        if flags.contains(.shift) { carbon |= UInt32(shiftKey) }
+        return carbon
+    }
+
+    // MARK: - Popover
 
     @objc private func togglePopover() {
         guard let button = statusItem?.button, let popover = popover else { return }

@@ -21,7 +21,12 @@ final class AppViewModel: ObservableObject {
     }
     @Published var availableRepos: [Repository] = []
 
+    @Published var shortcutKeyCode: Int = -1
+    @Published var shortcutModifiers: Int = 0
+    @Published var shortcutKeyChar: String = ""
+
     var onWorkflowCompleted: ((WorkflowRun) -> Void)?
+    var onShortcutChanged: (() -> Void)?
 
     private var monitoringTask: Task<Void, Never>?
     private var previousCompletedWorkflowIds: Set<Int> = []
@@ -65,6 +70,10 @@ final class AppViewModel: ObservableObject {
         if let repos = UserDefaults.standard.array(forKey: "selectedRepos") as? [String] {
             selectedRepos = repos
         }
+
+        shortcutKeyCode = UserDefaults.standard.object(forKey: "shortcutKeyCode") as? Int ?? -1
+        shortcutModifiers = UserDefaults.standard.integer(forKey: "shortcutModifiers")
+        shortcutKeyChar = UserDefaults.standard.string(forKey: "shortcutKeyChar") ?? ""
 
         loadSavedSettings()
     }
@@ -188,6 +197,34 @@ final class AppViewModel: ObservableObject {
             self.isLoading = false
             updateStatusIcon()
         }
+    }
+
+    // MARK: - Keyboard Shortcut
+
+    func setShortcut(keyCode: Int, modifiers: Int, keyChar: String) {
+        shortcutKeyCode = keyCode
+        shortcutModifiers = modifiers
+        shortcutKeyChar = keyChar
+        UserDefaults.standard.set(keyCode, forKey: "shortcutKeyCode")
+        UserDefaults.standard.set(modifiers, forKey: "shortcutModifiers")
+        UserDefaults.standard.set(keyChar, forKey: "shortcutKeyChar")
+        onShortcutChanged?()
+    }
+
+    func clearShortcut() {
+        setShortcut(keyCode: -1, modifiers: 0, keyChar: "")
+    }
+
+    var shortcutDisplayString: String {
+        guard shortcutKeyCode >= 0 else { return "" }
+        var s = ""
+        let flags = NSEvent.ModifierFlags(rawValue: UInt(shortcutModifiers))
+        if flags.contains(.control) { s += "⌃" }
+        if flags.contains(.option) { s += "⌥" }
+        if flags.contains(.shift) { s += "⇧" }
+        if flags.contains(.command) { s += "⌘" }
+        s += shortcutKeyChar
+        return s
     }
 
     @MainActor
