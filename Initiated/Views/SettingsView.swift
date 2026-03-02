@@ -521,7 +521,7 @@ struct RepoSelectionView: View {
                                         .font(.system(size: 13, weight: .medium))
                                         .foregroundStyle(.primary)
                                     
-                                    Text(repo.owner.login)
+                                    Text(repo.owner?.login ?? "unknown")
                                         .font(.system(size: 11))
                                         .foregroundStyle(.secondary)
                                 }
