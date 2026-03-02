@@ -221,6 +221,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                 
                 Button {
+                    viewModel.errorMessage = nil
                     showRepoSelection = true
                     Task {
                         await viewModel.fetchAvailableRepos()
@@ -467,6 +468,35 @@ struct RepoSelectionView: View {
                 Spacer()
                 ProgressView()
                     .scaleEffect(1.2)
+                Spacer()
+            } else if let errorMessage = viewModel.errorMessage, viewModel.availableRepos.isEmpty {
+                Spacer()
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.orange)
+                    Text("Failed to load repositories")
+                        .font(.system(size: 14, weight: .medium))
+                    Text(errorMessage)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                    Button {
+                        Task {
+                            await viewModel.fetchAvailableRepos()
+                        }
+                    } label: {
+                        Text("Retry")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.blue)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 6)
+                            .background(Color.blue.opacity(0.1))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
                 Spacer()
             } else if viewModel.availableRepos.isEmpty {
                 Spacer()
