@@ -76,6 +76,10 @@ final class GitHubService {
             decoder.keyDecodingStrategy = .convertFromSnakeCase
             return try decoder.decode(GitHubUser.self, from: data)
         } catch {
+            // Log the actual response for debugging
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Failed to decode user response: \(jsonString)")
+            }
             throw GitHubAPIError.decodingError(error)
         }
     }
