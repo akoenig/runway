@@ -54,11 +54,6 @@ jobs:
           
           create-dmg \
             --volname "Initiated-${{ steps.version.outputs.VERSION }}" \
-            --window-pos 200 120 \
-            --window-size 600 400 \
-            --icon-size 100 \
-            --icon "Initiated.app" 150 185 \
-            --app-drop-link 450 185 \
             "build/Initiated-${{ steps.version.outputs.VERSION }}.dmg" \
             "build/"
 
