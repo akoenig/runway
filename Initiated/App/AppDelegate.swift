@@ -1,5 +1,6 @@
 import AppKit
 import Carbon
+import Combine
 import SwiftUI
 import UserNotifications
 
@@ -26,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var eventMonitor: Any?
     private var hotkeyRef: EventHotKeyRef?
     private var hotkeyHandler: EventHandlerRef?
+    private var cancellables = Set<AnyCancellable>()
 
     private let viewModel = AppViewModel()
     private let notificationService = NotificationService()
@@ -35,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.windows.first?.close()
 
         setupMenuBar()
+        setupStatusIconObserver()
         setupNotifications()
         setupEventMonitor()
         setupHotkey()
@@ -62,8 +65,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover = NSPopover()
         popover?.contentSize = NSSize(width: 340, height: 420)
         popover?.behavior = .transient
-        popover?.animates = true
+        popover?.animates = false
         popover?.contentViewController = NSHostingController(rootView: MenuBarView(viewModel: viewModel))
+    }
+
+    /// Observe workflow changes via Combine to reactively update the menu bar dot.
+    /// This replaces the manual updateStatusIcon() calls in the view model and
+    /// ensures the dot always reflects the current state.
+    private func setupStatusIconObserver() {
+        viewModel.$workflows
+            .combineLatest(viewModel.$isAuthenticated)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _, _ in
+                guard let self = self else { return }
+                self.updateStatusIcon(status: self.viewModel.overallStatus)
+            }
+            .store(in: &cancellables)
     }
 
     private func setupNotifications() {
@@ -173,7 +190,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func updateStatusIcon(status: WorkflowStatus) {
+    // MARK: - Status Icon
+
+    private func updateStatusIcon(status: WorkflowStatus) {
         guard let button = statusItem?.button else { return }
 
         let color: NSColor = switch status {

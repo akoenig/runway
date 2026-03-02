@@ -168,7 +168,6 @@ final class AppViewModel: ObservableObject {
     func fetchWorkflowRuns() async {
         guard !selectedRepos.isEmpty else {
             workflows = []
-            updateStatusIcon()
             return
         }
 
@@ -191,11 +190,9 @@ final class AppViewModel: ObservableObject {
 
             self.workflows = runs
             self.isLoading = false
-            updateStatusIcon()
         } catch {
             self.errorMessage = error.localizedDescription
             self.isLoading = false
-            updateStatusIcon()
         }
     }
 
@@ -227,9 +224,4 @@ final class AppViewModel: ObservableObject {
         return s
     }
 
-    @MainActor
-    private func updateStatusIcon() {
-        guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
-        appDelegate.updateStatusIcon(status: overallStatus)
-    }
 }

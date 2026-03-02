@@ -348,14 +348,12 @@ struct SettingsView: View {
     private var footerBar: some View {
         HStack {
             Button {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    showSettings = false
-                }
+                showSettings = false
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -369,10 +367,10 @@ struct SettingsView: View {
             Spacer()
 
             // Invisible spacer to balance the back button
-            Color.clear.frame(width: 32, height: 32)
+            Color.clear.frame(width: 28, height: 28)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
     }
 
     // MARK: - Shared Components
@@ -411,9 +409,7 @@ struct SettingsView: View {
                 viewModel.isAuthenticated = true
                 viewModel.saveSettings()
                 isLoading = false
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    showSettings = false
-                }
+                showSettings = false
             }
 
             await viewModel.startMonitoring()

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct MenuBarView: View {
@@ -13,6 +14,10 @@ struct MenuBarView: View {
             }
         }
         .frame(width: 340, height: 420)
+        .background(
+            // Solid background to prevent translucency bleed-through
+            VisualEffectBackground()
+        )
     }
 
     private var mainContent: some View {
@@ -79,19 +84,20 @@ struct MenuBarView: View {
                     }
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.top, 4)
+            .padding(.bottom, 8)
         }
     }
 
     private func sectionHeader(title: String, count: Int?) -> some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(title)
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(.primary)
 
             if let count = count {
                 Text("\(count)")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 1)
@@ -104,8 +110,8 @@ struct MenuBarView: View {
             Spacer()
         }
         .padding(.horizontal, 16)
-        .padding(.top, 14)
-        .padding(.bottom, 6)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
     }
 
     // MARK: - Footer Bar
@@ -121,7 +127,7 @@ struct MenuBarView: View {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(viewModel.isLoading ? .quaternary : .secondary)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -130,7 +136,7 @@ struct MenuBarView: View {
             Spacer()
 
             // Status
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 Circle()
                     .fill(statusColor)
                     .frame(width: 6, height: 6)
@@ -144,30 +150,28 @@ struct MenuBarView: View {
 
             // Settings button
             Button {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    showSettings.toggle()
-                }
+                showSettings.toggle()
             } label: {
                 Image(systemName: "gearshape")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
     }
 
     // MARK: - Empty States
 
     private var notAuthenticatedView: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             Spacer()
 
             Image(systemName: "person.crop.circle.badge.questionmark")
-                .font(.system(size: 32, weight: .light))
+                .font(.system(size: 28, weight: .light))
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 4) {
@@ -180,9 +184,7 @@ struct MenuBarView: View {
             }
 
             Button {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    showSettings = true
-                }
+                showSettings = true
             } label: {
                 Text("Open Settings")
                     .font(.system(size: 12, weight: .medium))
@@ -199,7 +201,7 @@ struct MenuBarView: View {
     }
 
     private var loadingView: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             Spacer()
 
             ProgressView()
@@ -250,11 +252,11 @@ struct MenuBarView: View {
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             Spacer()
 
             Image(systemName: "checkmark.circle")
-                .font(.system(size: 32, weight: .light))
+                .font(.system(size: 28, weight: .light))
                 .foregroundStyle(.green)
 
             VStack(spacing: 4) {
@@ -280,4 +282,21 @@ struct MenuBarView: View {
         case .failure: return .red
         }
     }
+}
+
+// MARK: - Visual Effect Background
+
+/// NSVisualEffectView wrapper that provides a solid, opaque popover background
+/// instead of the default translucent material.
+struct VisualEffectBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .popover
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.isEmphasized = true
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
