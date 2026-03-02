@@ -1,6 +1,6 @@
 import Foundation
 
-struct GitHubUser: Codable {
+struct GitHubUser: Codable, Equatable {
     let id: Int
     let login: String
     let name: String?

@@ -491,11 +491,9 @@ struct RepoSelectionView: View {
                                         .font(.system(size: 13, weight: .medium))
                                         .foregroundStyle(.primary)
                                     
-                                    if let owner = repo.owner.login {
-                                        Text(owner)
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(.secondary)
-                                    }
+                                    Text(repo.owner.login)
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(.secondary)
                                 }
                                 
                                 Spacer()
