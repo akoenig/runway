@@ -129,23 +129,29 @@ final class GitHubService {
             let decoder = JSONDecoder()
             decoder.keyDecodingStrategy = .convertFromSnakeCase
             
-            // Handle ISO8601 dates with or without fractional seconds
-            let dateFormatter = ISO8601DateFormatter()
-            dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            // Handle ISO8601 dates with or without fractional seconds.
+            // Use two separate formatter instances to avoid mutation bugs —
+            // a single formatter whose formatOptions is changed inside the closure
+            // permanently loses the fractional-seconds capability after the first
+            // date string that lacks them.
+            let withFractional = ISO8601DateFormatter()
+            withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+            let withoutFractional = ISO8601DateFormatter()
+            withoutFractional.formatOptions = [.withInternetDateTime]
+
             decoder.dateDecodingStrategy = .custom { decoder in
                 let container = try decoder.singleValueContainer()
                 let dateString = try container.decode(String.self)
-                
-                if let date = dateFormatter.date(from: dateString) {
+
+                if let date = withFractional.date(from: dateString) {
                     return date
                 }
-                
-                // Try without fractional seconds
-                dateFormatter.formatOptions = [.withInternetDateTime]
-                if let date = dateFormatter.date(from: dateString) {
+
+                if let date = withoutFractional.date(from: dateString) {
                     return date
                 }
-                
+
                 throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date: \(dateString)")
             }
             

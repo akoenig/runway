@@ -26,6 +26,9 @@ final class AppViewModel: ObservableObject {
     private var monitoringTask: Task<Void, Never>?
     private var previousCompletedWorkflowIds: Set<Int> = []
 
+    /// Tracks the in-flight user validation so startMonitoring() can await it.
+    private var userValidationTask: Task<Void, Never>?
+
     var overallStatus: WorkflowStatus {
         guard isAuthenticated else { return .idle }
 
@@ -33,10 +36,11 @@ final class AppViewModel: ObservableObject {
         let failedCount = workflows.filter { $0.workflowStatus == .failure }.count
         let successCount = workflows.filter { $0.workflowStatus == .success }.count
 
-        if failedCount > 0 {
-            return .failure
-        } else if runningCount > 0 {
+        // Running takes priority — active work is the most important signal.
+        if runningCount > 0 {
             return .running
+        } else if failedCount > 0 {
+            return .failure
         } else if successCount > 0 {
             return .success
         }
@@ -47,7 +51,7 @@ final class AppViewModel: ObservableObject {
         let runningCount = workflows.filter { $0.workflowStatus == .running }.count
 
         if runningCount > 0 {
-            return "\(runningCount) workflow\(runningCount == 1 ? "" : "s") running"
+            return "\(runningCount) running"
         }
         return "All clear"
     }
@@ -57,7 +61,7 @@ final class AppViewModel: ObservableObject {
         if stored > 0 {
             pollingInterval = stored
         }
-        
+
         if let repos = UserDefaults.standard.array(forKey: "selectedRepos") as? [String] {
             selectedRepos = repos
         }
@@ -69,7 +73,7 @@ final class AppViewModel: ObservableObject {
         if KeychainService.shared.hasToken {
             isAuthenticated = true
 
-            Task { @MainActor in
+            userValidationTask = Task { @MainActor in
                 do {
                     let user = try await GitHubService.shared.validateToken()
                     githubUser = user
@@ -87,7 +91,20 @@ final class AppViewModel: ObservableObject {
     }
 
     func startMonitoring() async {
+        // Wait for any in-flight user validation to finish first.
+        // Without this, the guard below races with loadSavedSettings()
+        // and almost always fails on launch, leaving polling dead.
+        if let validationTask = userValidationTask {
+            await validationTask.value
+        }
+
         guard isAuthenticated, githubUser != nil else { return }
+
+        // Auto-select all repos on first launch so the user immediately
+        // sees workflows without having to configure anything.
+        if selectedRepos.isEmpty {
+            await fetchAvailableRepos()
+        }
 
         await fetchWorkflowRuns()
         startPolling()
@@ -103,8 +120,10 @@ final class AppViewModel: ObservableObject {
 
         monitoringTask = Task {
             while !Task.isCancelled {
-                await fetchWorkflowRuns()
+                // Sleep first — the initial fetch already happened in startMonitoring().
                 try? await Task.sleep(nanoseconds: UInt64(pollingInterval) * 1_000_000_000)
+                guard !Task.isCancelled else { break }
+                await fetchWorkflowRuns()
             }
         }
     }
@@ -123,12 +142,12 @@ final class AppViewModel: ObservableObject {
         do {
             let repos = try await GitHubService.shared.fetchUserRepos(perPage: 100)
             availableRepos = repos.sorted { $0.displayFullName < $1.displayFullName }
-            
+
             // If no repos selected yet, select all by default (frictionless)
             if selectedRepos.isEmpty {
                 selectedRepos = repos.map { $0.displayFullName }
             }
-            
+
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
@@ -140,6 +159,7 @@ final class AppViewModel: ObservableObject {
     func fetchWorkflowRuns() async {
         guard !selectedRepos.isEmpty else {
             workflows = []
+            updateStatusIcon()
             return
         }
 
@@ -166,6 +186,7 @@ final class AppViewModel: ObservableObject {
         } catch {
             self.errorMessage = error.localizedDescription
             self.isLoading = false
+            updateStatusIcon()
         }
     }
 

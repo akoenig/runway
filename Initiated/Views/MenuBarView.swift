@@ -9,67 +9,56 @@ struct MenuBarView: View {
             if showSettings {
                 SettingsView(viewModel: viewModel, showSettings: $showSettings)
             } else {
-                headerSection
-                contentSection
-                footerSection
+                mainContent
             }
         }
-        .frame(width: 260, height: 320)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.background)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 4)
+        .frame(width: 300, height: 360)
     }
+
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            headerSection
+            Divider().opacity(0.4)
+            contentSection
+            Divider().opacity(0.4)
+            footerSection
+        }
+    }
+
+    // MARK: - Header
 
     private var headerSection: some View {
         HStack(spacing: 8) {
-            statusIndicator
-            
+            Circle()
+                .fill(statusColor)
+                .frame(width: 7, height: 7)
+
             Text("Initiated")
                 .font(.system(size: 13, weight: .semibold))
-            
+
             Spacer()
 
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.easeInOut(duration: 0.15)) {
                     showSettings.toggle()
                 }
             } label: {
-                Image(systemName: "gear")
-                    .font(.system(size: 11))
+                Image(systemName: "gearshape")
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
-                    .frame(width: 22, height: 22)
+                    .frame(width: 24, height: 24)
                     .background(
-                        Circle()
-                            .fill(Color.secondary.opacity(0.06))
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.primary.opacity(0.05))
                     )
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .padding(.vertical, 10)
     }
 
-    private var statusIndicator: some View {
-        Circle()
-            .fill(statusColor)
-            .frame(width: 8, height: 8)
-    }
-
-    private var statusColor: Color {
-        switch viewModel.overallStatus {
-        case .idle:
-            return .gray
-        case .running:
-            return .orange
-        case .success:
-            return .green
-        case .failure:
-            return .red
-        }
-    }
+    // MARK: - Content
 
     @ViewBuilder
     private var contentSection: some View {
@@ -89,72 +78,70 @@ struct MenuBarView: View {
     private var notAuthenticatedView: some View {
         VStack(spacing: 12) {
             Spacer()
-            
-            Image(systemName: "link.circle.fill")
-                .font(.system(size: 32))
-                .foregroundStyle(.blue)
 
-            VStack(spacing: 2) {
+            Image(systemName: "person.crop.circle.badge.questionmark")
+                .font(.system(size: 28, weight: .light))
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 4) {
                 Text("Connect GitHub")
-                    .font(.system(size: 14, weight: .semibold))
-                
-                Text("Link your account to monitor workflows")
+                    .font(.system(size: 13, weight: .medium))
+
+                Text("Open settings to link your account")
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.tertiary)
             }
 
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.easeInOut(duration: 0.15)) {
                     showSettings = true
                 }
             } label: {
-                Text("Connect")
-                    .font(.system(size: 12, weight: .medium))
+                Text("Open Settings")
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
-                    .background(Color.blue)
-                    .clipShape(Capsule())
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 5)
+                    .background(Color.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
-            
+
             Spacer()
         }
-        .padding(.horizontal, 12)
     }
 
     private var loadingView: some View {
         VStack(spacing: 8) {
             Spacer()
-            
+
             ProgressView()
-                .scaleEffect(0.8)
+                .scaleEffect(0.7)
                 .tint(.secondary)
-            
-            Text("Loading...")
+
+            Text("Loading workflows...")
                 .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-            
+                .foregroundStyle(.tertiary)
+
             Spacer()
         }
     }
 
     private func errorView(message: String) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             Spacer()
-            
-            Image(systemName: "exclamationmark.circle.fill")
-                .font(.system(size: 32))
+
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 24, weight: .light))
                 .foregroundStyle(.orange)
 
-            VStack(spacing: 2) {
-                Text("Connection Error")
-                    .font(.system(size: 14, weight: .semibold))
-                
+            VStack(spacing: 3) {
+                Text("Something went wrong")
+                    .font(.system(size: 12, weight: .medium))
+
                 Text(message)
                     .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
@@ -166,66 +153,74 @@ struct MenuBarView: View {
             } label: {
                 Text("Retry")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(.accentColor)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 4)
                     .background(
-                        Capsule()
-                            .fill(Color.blue.opacity(0.1))
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.accentColor.opacity(0.1))
                     )
             }
             .buttonStyle(.plain)
-            
+
             Spacer()
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             Spacer()
-            
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 32))
+
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 28, weight: .light))
                 .foregroundStyle(.green)
 
-            VStack(spacing: 2) {
-                Text("All Clear")
-                    .font(.system(size: 14, weight: .semibold))
-                
-                Text("No active workflows")
+            VStack(spacing: 3) {
+                Text("All clear")
+                    .font(.system(size: 13, weight: .medium))
+
+                Text("No active workflow runs")
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tertiary)
             }
-            
+
             Spacer()
         }
-        .padding(.horizontal, 12)
     }
 
     private var workflowListView: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(spacing: 0) {
-                ForEach(viewModel.workflows) { workflow in
+                ForEach(Array(viewModel.workflows.enumerated()), id: \.element.id) { index, workflow in
                     WorkflowRowView(workflow: workflow) {
                         if let url = URL(string: workflow.htmlUrl) {
                             NSWorkspace.shared.open(url)
                         }
                     }
+
+                    if index < viewModel.workflows.count - 1 {
+                        Divider()
+                            .padding(.leading, 30)
+                            .opacity(0.3)
+                    }
                 }
             }
+            .padding(.vertical, 4)
         }
     }
+
+    // MARK: - Footer
 
     private var footerSection: some View {
         HStack(spacing: 6) {
             Circle()
                 .fill(statusColor)
                 .frame(width: 5, height: 5)
-            
+
             Text(viewModel.statusText)
                 .font(.system(size: 10))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.tertiary)
 
             Spacer()
 
@@ -235,16 +230,36 @@ struct MenuBarView: View {
                 }
             } label: {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 10))
-                    .foregroundStyle(viewModel.isLoading ? .tertiary : .secondary)
-                    .frame(width: 20, height: 20)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(viewModel.isLoading ? .quaternary : .secondary)
+                    .frame(width: 22, height: 22)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(Color.primary.opacity(0.04))
+                    )
             }
             .buttonStyle(.plain)
             .disabled(viewModel.isLoading)
             .rotationEffect(.degrees(viewModel.isLoading ? 360 : 0))
-            .animation(viewModel.isLoading ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: viewModel.isLoading)
+            .animation(
+                viewModel.isLoading
+                    ? .linear(duration: 1).repeatForever(autoreverses: false)
+                    : .default,
+                value: viewModel.isLoading
+            )
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .padding(.vertical, 8)
+    }
+
+    // MARK: - Helpers
+
+    private var statusColor: Color {
+        switch viewModel.overallStatus {
+        case .idle: return .gray
+        case .running: return .orange
+        case .success: return .green
+        case .failure: return .red
+        }
     }
 }

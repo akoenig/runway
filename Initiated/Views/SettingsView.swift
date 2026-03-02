@@ -11,215 +11,197 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("Settings")
-                    .font(.system(size: 15, weight: .semibold))
-                
-                Spacer()
-                
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showSettings = false
-                    }
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
-                        .background(Color.secondary.opacity(0.1))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(.ultraThinMaterial)
-            
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    // Connection Section
+            headerSection
+            Divider().opacity(0.4)
+
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 16) {
                     connectionSection
-                    
-                    // Repositories Section
                     if viewModel.isAuthenticated {
                         reposSection
                     }
-                    
-                    // Polling Section
                     pollingSection
-                    
-                    // About Section
-                    aboutSection
+                    footerSection
                 }
-                .padding(20)
+                .padding(14)
             }
         }
         .sheet(isPresented: $showRepoSelection) {
             RepoSelectionView(viewModel: viewModel)
         }
     }
-    
-    private var connectionSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "link.circle.fill")
-                    .foregroundStyle(.blue)
-                    .font(.system(size: 18))
-                
-                Text("GitHub Connection")
-                    .font(.system(size: 14, weight: .semibold))
-                
-                Spacer()
+
+    // MARK: - Header
+
+    private var headerSection: some View {
+        HStack {
+            Text("Settings")
+                .font(.system(size: 13, weight: .semibold))
+
+            Spacer()
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    showSettings = false
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22, height: 22)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.primary.opacity(0.06))
+                    )
             }
-            
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    // MARK: - Connection
+
+    private var connectionSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("GitHub", systemImage: "link")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+
             if viewModel.isAuthenticated {
-                // Connected state
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.green.opacity(0.15))
-                            .frame(width: 40, height: 40)
-                        
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.green)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Connected")
-                            .font(.system(size: 13, weight: .medium))
-                        
-                        if let username = viewModel.githubUser?.login {
-                            Text("@\(username)")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    Button {
-                        Task {
-                            try? KeychainService.shared.deleteToken()
-                            await MainActor.run {
-                                viewModel.isAuthenticated = false
-                                viewModel.githubUser = nil
-                                viewModel.workflows = []
-                                viewModel.selectedRepos = []
-                                viewModel.availableRepos = []
-                            }
-                        }
-                    } label: {
-                        Text("Disconnect")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.red)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.red.opacity(0.1))
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
+                connectedCard
             } else {
-                // Not connected state
-                VStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Personal Access Token")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                        
-                        HStack(spacing: 8) {
-                            Group {
-                                if showToken {
-                                    TextField("ghp_...", text: $patInput)
-                                } else {
-                                    SecureField("ghp_...", text: $patInput)
-                                }
-                            }
-                            .font(.system(size: 13))
-                            .textFieldStyle(.plain)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .background(Color.secondary.opacity(0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            
-                            Button {
-                                showToken.toggle()
-                            } label: {
-                                Image(systemName: showToken ? "eye.slash" : "eye")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 36, height: 36)
-                                    .background(Color.secondary.opacity(0.08))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        
-                        if let error = errorMessage {
-                            Text(error)
-                                .font(.system(size: 11))
-                                .foregroundStyle(.red)
-                        }
-                    }
-                    
-                    Button {
-                        Task {
-                            await connect()
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            if isLoading {
-                                ProgressView()
-                                    .scaleEffect(0.7)
-                                    .tint(.white)
-                            } else {
-                                Image(systemName: "link")
-                                Text("Connect")
-                            }
-                        }
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(patInput.isEmpty ? Color.blue.opacity(0.5) : Color.blue)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(patInput.isEmpty || isLoading)
-                }
+                tokenInputCard
             }
         }
-        .padding(16)
+    }
+
+    private var connectedCard: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                if let login = viewModel.githubUser?.login {
+                    Text("@\(login)")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                Text("Connected")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.green)
+            }
+
+            Spacer()
+
+            Button {
+                Task {
+                    try? KeychainService.shared.deleteToken()
+                    await MainActor.run {
+                        viewModel.isAuthenticated = false
+                        viewModel.githubUser = nil
+                        viewModel.workflows = []
+                        viewModel.selectedRepos = []
+                        viewModel.availableRepos = []
+                    }
+                }
+            } label: {
+                Text("Disconnect")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.red.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.secondary.opacity(0.05))
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.primary.opacity(0.03))
         )
     }
-    
-    private var reposSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "folder.circle.fill")
-                    .foregroundStyle(.blue)
-                    .font(.system(size: 18))
-                
-                Text("Repositories")
-                    .font(.system(size: 14, weight: .semibold))
-                
-                Spacer()
-                
-                Text("\(viewModel.selectedRepos.count) selected")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+
+    private var tokenInputCard: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 6) {
+                Group {
+                    if showToken {
+                        TextField("ghp_...", text: $patInput)
+                    } else {
+                        SecureField("ghp_...", text: $patInput)
+                    }
+                }
+                .font(.system(size: 12, design: .monospaced))
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.primary.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                Button {
+                    showToken.toggle()
+                } label: {
+                    Image(systemName: showToken ? "eye.slash" : "eye")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, height: 30)
+                        .background(Color.primary.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
             }
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Select which repositories to monitor for workflow runs.")
+
+            if let error = errorMessage {
+                Text(error)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Button {
+                Task { await connect() }
+            } label: {
+                HStack(spacing: 5) {
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "link")
+                            .font(.system(size: 10))
+                        Text("Connect")
+                    }
+                }
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(patInput.isEmpty ? Color.accentColor.opacity(0.4) : Color.accentColor)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            .buttonStyle(.plain)
+            .disabled(patInput.isEmpty || isLoading)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.primary.opacity(0.03))
+        )
+    }
+
+    // MARK: - Repositories
+
+    private var reposSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Repositories", systemImage: "folder")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Text("\(viewModel.selectedRepos.count) monitored")
                     .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
                 Button {
                     viewModel.errorMessage = nil
                     showRepoSelection = true
@@ -227,117 +209,93 @@ struct SettingsView: View {
                         await viewModel.fetchAvailableRepos()
                     }
                 } label: {
-                    HStack {
-                        Image(systemName: "folder.badge.plus")
-                        Text("Manage Repositories")
+                    HStack(spacing: 4) {
+                        Text("Manage")
+                            .font(.system(size: 11, weight: .medium))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 8, weight: .semibold))
                     }
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(Color.blue)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .foregroundStyle(.accentColor)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.accentColor.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
                 .buttonStyle(.plain)
             }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.primary.opacity(0.03))
+            )
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.secondary.opacity(0.05))
-        )
     }
-    
+
+    // MARK: - Polling
+
     private var pollingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "clock.arrow.circlepath")
-                    .foregroundStyle(.blue)
-                    .font(.system(size: 18))
-                
-                Text("Update Frequency")
-                    .font(.system(size: 14, weight: .semibold))
-                
-                Spacer()
-            }
-            
-            VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Update Frequency", systemImage: "clock.arrow.circlepath")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 4) {
                 ForEach([15, 30, 60, 120], id: \.self) { interval in
                     Button {
                         viewModel.pollingInterval = interval
                     } label: {
-                        HStack {
-                            Text(intervalText(interval))
-                                .font(.system(size: 13))
-                                .foregroundStyle(.primary)
-                            
-                            Spacer()
-                            
-                            if viewModel.pollingInterval == interval {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.blue)
-                                    .font(.system(size: 16))
-                            } else {
-                                Circle()
-                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1.5)
-                                    .frame(width: 16, height: 16)
-                            }
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(viewModel.pollingInterval == interval ? Color.blue.opacity(0.08) : Color.clear)
-                        )
+                        Text(shortInterval(interval))
+                            .font(.system(size: 11, weight: viewModel.pollingInterval == interval ? .semibold : .regular))
+                            .foregroundStyle(viewModel.pollingInterval == interval ? .white : .secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(viewModel.pollingInterval == interval ? Color.accentColor : Color.primary.opacity(0.04))
+                            )
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.secondary.opacity(0.05))
-        )
     }
-    
-    private var aboutSection: some View {
-        VStack(spacing: 12) {
+
+    // MARK: - Footer
+
+    private var footerSection: some View {
+        VStack(spacing: 10) {
             Button {
                 NSApp.terminate(nil)
             } label: {
-                HStack {
+                HStack(spacing: 4) {
                     Image(systemName: "power")
-                        .font(.system(size: 13))
+                        .font(.system(size: 10))
                     Text("Quit Initiated")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                 }
                 .foregroundStyle(.red)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(Color.red.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(.vertical, 7)
+                .background(Color.red.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
-            
-            Text("Version 1.1.7")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
+
+            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
+                .font(.system(size: 10))
+                .foregroundStyle(.quaternary)
         }
     }
-    
-    private func intervalText(_ interval: Int) -> String {
+
+    // MARK: - Helpers
+
+    private func shortInterval(_ interval: Int) -> String {
         switch interval {
-        case 15:
-            return "15 seconds"
-        case 30:
-            return "30 seconds"
-        case 60:
-            return "1 minute"
-        case 120:
-            return "2 minutes"
-        default:
-            return "\(interval) seconds"
+        case 15: return "15s"
+        case 30: return "30s"
+        case 60: return "1m"
+        case 120: return "2m"
+        default: return "\(interval)s"
         }
     }
 
@@ -348,214 +306,141 @@ struct SettingsView: View {
         do {
             try KeychainService.shared.saveToken(patInput)
             let user = try await GitHubService.shared.validateToken()
+
             await MainActor.run {
                 viewModel.githubUser = user
                 viewModel.isAuthenticated = true
                 viewModel.saveSettings()
-                Task {
-                    // Fetch repos after successful connection
-                    await viewModel.fetchAvailableRepos()
-                    await viewModel.fetchWorkflowRuns()
+                isLoading = false
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    showSettings = false
                 }
             }
+
+            // Start monitoring in background — the main view will show
+            // a loading state until workflows arrive.
+            await viewModel.startMonitoring()
         } catch {
             await MainActor.run {
                 errorMessage = error.localizedDescription
                 try? KeychainService.shared.deleteToken()
+                isLoading = false
             }
-        }
-
-        await MainActor.run {
-            isLoading = false
         }
     }
 }
+
+// MARK: - Repo Selection Sheet
 
 struct RepoSelectionView: View {
     @ObservedObject var viewModel: AppViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var searchText: String = ""
-    
+
     var filteredRepos: [Repository] {
         if searchText.isEmpty {
             return viewModel.availableRepos
         }
         return viewModel.availableRepos.filter { $0.displayFullName.localizedCaseInsensitiveContains(searchText) }
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("Select Repositories")
-                    .font(.system(size: 15, weight: .semibold))
-                
+                Text("Repositories")
+                    .font(.system(size: 13, weight: .semibold))
+
                 Spacer()
-                
-                Button {
-                    dismiss()
-                } label: {
+
+                Button { dismiss() } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 14))
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
-                        .background(Color.secondary.opacity(0.1))
-                        .clipShape(Circle())
+                        .frame(width: 22, height: 22)
+                        .background(Color.primary.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(.ultraThinMaterial)
-            
-            // Search bar
-            HStack {
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            Divider().opacity(0.4)
+
+            // Search
+            HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                    .font(.system(size: 14))
-                
-                TextField("Search repositories...", text: $searchText)
-                    .font(.system(size: 13))
+                    .foregroundStyle(.tertiary)
+                    .font(.system(size: 12))
+
+                TextField("Search...", text: $searchText)
+                    .font(.system(size: 12))
                     .textFieldStyle(.plain)
-                
+
                 if !searchText.isEmpty {
                     Button {
                         searchText = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                            .font(.system(size: 14))
+                            .foregroundStyle(.tertiary)
+                            .font(.system(size: 12))
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color.secondary.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            
-            // Select all/none buttons
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(Color.primary.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+
+            // Bulk actions
             HStack {
                 Button {
                     viewModel.selectedRepos = viewModel.availableRepos.map { $0.displayFullName }
                 } label: {
-                    Text("Select All")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.blue)
+                    Text("All")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.accentColor)
                 }
                 .buttonStyle(.plain)
                 .disabled(viewModel.selectedRepos.count == viewModel.availableRepos.count)
-                
-                Spacer()
-                
+
+                Text("\u{00B7}")
+                    .foregroundStyle(.quaternary)
+
                 Button {
                     viewModel.selectedRepos = []
                 } label: {
-                    Text("Select None")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.blue)
+                    Text("None")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.accentColor)
                 }
                 .buttonStyle(.plain)
                 .disabled(viewModel.selectedRepos.isEmpty)
+
+                Spacer()
+
+                Text("\(viewModel.selectedRepos.count)/\(viewModel.availableRepos.count)")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.tertiary)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 16)
             .padding(.bottom, 8)
+
+            Divider().opacity(0.3)
+
+            // List
+            repoListContent
             
-            // Repo list
-            if viewModel.isLoading && viewModel.availableRepos.isEmpty {
-                Spacer()
-                ProgressView()
-                    .scaleEffect(1.2)
-                Spacer()
-            } else if let errorMessage = viewModel.errorMessage, viewModel.availableRepos.isEmpty {
-                Spacer()
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.orange)
-                    Text("Failed to load repositories")
-                        .font(.system(size: 14, weight: .medium))
-                    Text(errorMessage)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 20)
-                    Button {
-                        Task {
-                            await viewModel.fetchAvailableRepos()
-                        }
-                    } label: {
-                        Text("Retry")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.blue)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 6)
-                            .background(Color.blue.opacity(0.1))
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-                Spacer()
-            } else if viewModel.availableRepos.isEmpty {
-                Spacer()
-                VStack(spacing: 12) {
-                    Image(systemName: "folder.badge.questionmark")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.secondary)
-                    Text("No repositories found")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            } else {
-                List {
-                    ForEach(filteredRepos, id: \.displayFullName) { repo in
-                        Button {
-                            toggleRepo(repo)
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(repo.name)
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundStyle(.primary)
-                                    
-                                    Text(repo.owner?.login ?? "unknown")
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(.secondary)
-                                }
-                                
-                                Spacer()
-                                
-                                if viewModel.selectedRepos.contains(repo.displayFullName) {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(.blue)
-                                        .font(.system(size: 18))
-                                } else {
-                                    Circle()
-                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1.5)
-                                        .frame(width: 18, height: 18)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
-                    }
-                }
-                .listStyle(.plain)
-            }
-            
-            // Footer
+            Divider().opacity(0.3)
+
+            // Done
             HStack {
-                Text("\(viewModel.selectedRepos.count) of \(viewModel.availableRepos.count) selected")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                
                 Spacer()
-                
+
                 Button {
                     dismiss()
                     Task {
@@ -563,22 +448,97 @@ struct RepoSelectionView: View {
                     }
                 } label: {
                     Text("Done")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-                        .background(viewModel.selectedRepos.isEmpty ? Color.blue.opacity(0.5) : Color.blue)
-                        .clipShape(Capsule())
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 7)
+                        .background(viewModel.selectedRepos.isEmpty ? Color.accentColor.opacity(0.4) : Color.accentColor)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(.ultraThinMaterial)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
-        .frame(width: 400, height: 500)
+        .frame(width: 360, height: 440)
     }
-    
+
+    @ViewBuilder
+    private var repoListContent: some View {
+        if viewModel.isLoading && viewModel.availableRepos.isEmpty {
+            Spacer()
+            VStack(spacing: 8) {
+                ProgressView().scaleEffect(0.8)
+                Text("Loading...")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+            Spacer()
+        } else if let errorMessage = viewModel.errorMessage, viewModel.availableRepos.isEmpty {
+            Spacer()
+            VStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 24, weight: .light))
+                    .foregroundStyle(.orange)
+                Text(errorMessage)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                Button {
+                    Task { await viewModel.fetchAvailableRepos() }
+                } label: {
+                    Text("Retry")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.accentColor)
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer()
+        } else if viewModel.availableRepos.isEmpty {
+            Spacer()
+            Text("No repositories found")
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
+            Spacer()
+        } else {
+            List {
+                ForEach(filteredRepos, id: \.displayFullName) { repo in
+                    Button { toggleRepo(repo) } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(repo.name)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.primary)
+
+                                Text(repo.owner?.login ?? "unknown")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.tertiary)
+                            }
+
+                            Spacer()
+
+                            if viewModel.selectedRepos.contains(repo.displayFullName) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.accentColor)
+                                    .font(.system(size: 16))
+                            } else {
+                                Circle()
+                                    .stroke(Color.primary.opacity(0.15), lineWidth: 1.5)
+                                    .frame(width: 16, height: 16)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                }
+            }
+            .listStyle(.plain)
+        }
+    }
+
     private func toggleRepo(_ repo: Repository) {
         if viewModel.selectedRepos.contains(repo.displayFullName) {
             viewModel.selectedRepos.removeAll { $0 == repo.displayFullName }
