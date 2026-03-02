@@ -136,7 +136,9 @@ final class AppViewModel {
     }
 
     private func updateStatusIcon() {
-        guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
-        appDelegate.updateStatusIcon(status: overallStatus)
+        Task { @MainActor in
+            guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
+            appDelegate.updateStatusIcon(status: self.overallStatus)
+        }
     }
 }
