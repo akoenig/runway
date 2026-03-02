@@ -1,0 +1,35 @@
+name: Initiated
+options:
+  bundleIdPrefix: com.initiated
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+
+targets:
+  Initiated:
+    type: application
+    platform: macOS
+    sources:
+      - path: Initiated
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.initiated.app
+        PRODUCT_NAME: Initiated
+        INFOPLIST_FILE: Initiated/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Initiated/Initiated.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+        LD_RUNPATH_SEARCH_PATHS:
+          - "@executable_path/../Frameworks"
+    entitlements:
+      path: Initiated/Initiated.entitlements
