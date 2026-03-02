@@ -7,37 +7,66 @@ struct MenuBarView: View {
     var body: some View {
         VStack(spacing: 0) {
             if showSettings {
-                SettingsView(viewModel: viewModel)
+                SettingsView(viewModel: viewModel, showSettings: $showSettings)
             } else {
                 headerSection
-                Divider()
                 contentSection
-                Divider()
                 footerSection
             }
         }
-        .frame(width: 320, height: 400)
-        .background(.regularMaterial)
+        .frame(width: 360, height: 480)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.ultraThinMaterial)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
     }
 
     private var headerSection: some View {
         HStack {
-            Text("Initiated")
-                .font(.headline)
+            HStack(spacing: 8) {
+                Image(systemName: "circle.fill")
+                    .foregroundStyle(statusColor)
+                    .font(.system(size: 10))
+                
+                Text("Initiated")
+                    .font(.system(size: 15, weight: .semibold))
+            }
 
             Spacer()
 
             Button {
-                showSettings.toggle()
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showSettings.toggle()
+                }
             } label: {
                 Image(systemName: "gear")
+                    .font(.system(size: 14))
                     .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(Color.secondary.opacity(0.1))
+                    .clipShape(Circle())
             }
             .buttonStyle(.plain)
             .help("Settings")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(.ultraThinMaterial)
+    }
+
+    private var statusColor: Color {
+        switch viewModel.overallStatus {
+        case .idle:
+            return .gray
+        case .running:
+            return .orange
+        case .success:
+            return .green
+        case .failure:
+            return .red
+        }
     }
 
     @ViewBuilder
@@ -56,82 +85,146 @@ struct MenuBarView: View {
     }
 
     private var notAuthenticatedView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "person.crop.circle.badge.questionmark")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-
-            Text("Not Connected")
-                .font(.headline)
-
-            Text("Click the gear icon to enter your GitHub Personal Access Token.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            Button("Open Settings") {
-                showSettings = true
+        VStack(spacing: 20) {
+            Spacer()
+            
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.1))
+                    .frame(width: 80, height: 80)
+                
+                Image(systemName: "person.crop.circle.badge.questionmark")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.blue)
             }
-            .buttonStyle(.borderedProminent)
+
+            VStack(spacing: 8) {
+                Text("Welcome to Initiated")
+                    .font(.system(size: 18, weight: .semibold))
+                
+                Text("Connect your GitHub account to start monitoring your workflows.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 280)
+            }
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showSettings = true
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "link")
+                    Text("Connect GitHub")
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Color.blue)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            
+            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
     }
 
     private var loadingView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
+            Spacer()
+            
             ProgressView()
                 .scaleEffect(1.2)
+                .tint(.secondary)
+            
             Text("Loading workflows...")
-                .font(.subheadline)
+                .font(.system(size: 14))
                 .foregroundStyle(.secondary)
+            
+            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func errorView(message: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 36))
-                .foregroundStyle(.orange)
+        VStack(spacing: 20) {
+            Spacer()
+            
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.1))
+                    .frame(width: 80, height: 80)
+                
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.orange)
+            }
 
-            Text("Failed to Load")
-                .font(.headline)
+            VStack(spacing: 8) {
+                Text("Connection Error")
+                    .font(.system(size: 18, weight: .semibold))
+                
+                Text(message)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 300)
+            }
 
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            Button("Retry") {
+            Button {
                 Task {
                     await viewModel.fetchWorkflowRuns()
                 }
+            } label: {
+                Text("Try Again")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(Color.blue)
+                    .clipShape(Capsule())
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.plain)
+            
+            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 36))
-                .foregroundStyle(.green)
+        VStack(spacing: 20) {
+            Spacer()
+            
+            ZStack {
+                Circle()
+                    .fill(Color.green.opacity(0.1))
+                    .frame(width: 80, height: 80)
+                
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.green)
+            }
 
-            Text("All Clear")
-                .font(.headline)
-
-            Text("No recent workflow runs found.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            VStack(spacing: 8) {
+                Text("All Workflows Complete")
+                    .font(.system(size: 18, weight: .semibold))
+                
+                Text("No active workflow runs found. You're all caught up!")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 280)
+            }
+            
+            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
     }
 
     private var workflowListView: some View {
-        ScrollView {
+        ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 0) {
                 ForEach(viewModel.workflows) { workflow in
                     WorkflowRowView(workflow: workflow) {
@@ -139,21 +232,25 @@ struct MenuBarView: View {
                             NSWorkspace.shared.open(url)
                         }
                     }
-
-                    if workflow.id != viewModel.workflows.last?.id {
-                        Divider()
-                            .padding(.leading, 44)
-                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 4)
                 }
             }
+            .padding(.vertical, 8)
         }
     }
 
     private var footerSection: some View {
         HStack {
-            Text(viewModel.statusText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+                
+                Text(viewModel.statusText)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
 
             Spacer()
 
@@ -163,13 +260,20 @@ struct MenuBarView: View {
                 }
             } label: {
                 Image(systemName: "arrow.clockwise")
-                    .font(.caption)
+                    .font(.system(size: 12))
+                    .foregroundStyle(viewModel.isLoading ? .tertiary : .secondary)
+                    .frame(width: 28, height: 28)
+                    .background(Color.secondary.opacity(0.1))
+                    .clipShape(Circle())
             }
             .buttonStyle(.plain)
             .disabled(viewModel.isLoading)
+            .rotationEffect(.degrees(viewModel.isLoading ? 360 : 0))
+            .animation(viewModel.isLoading ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: viewModel.isLoading)
             .help("Refresh")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
     }
 }

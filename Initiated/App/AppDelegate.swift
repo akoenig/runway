@@ -12,6 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let notificationService = NotificationService()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Hide the main window immediately
+        NSApp.windows.first?.close()
+        
         setupMenuBar()
         setupNotifications()
         setupEventMonitor()
