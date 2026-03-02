@@ -62,11 +62,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.target = self
         }
 
+        let hostingController = NSHostingController(rootView: MenuBarView(viewModel: viewModel))
+        // Make the hosting view fully opaque so the popover doesn't
+        // show translucent vibrancy that hurts readability.
+        hostingController.view.wantsLayer = true
+        hostingController.view.layer?.isOpaque = true
+
         popover = NSPopover()
         popover?.contentSize = NSSize(width: 340, height: 420)
         popover?.behavior = .transient
         popover?.animates = false
-        popover?.contentViewController = NSHostingController(rootView: MenuBarView(viewModel: viewModel))
+        popover?.contentViewController = hostingController
     }
 
     /// Observe workflow changes via Combine to reactively update the menu bar dot.

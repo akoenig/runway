@@ -14,10 +14,7 @@ struct MenuBarView: View {
             }
         }
         .frame(width: 340, height: 420)
-        .background(
-            // Solid background to prevent translucency bleed-through
-            VisualEffectBackground()
-        )
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var mainContent: some View {
@@ -284,19 +281,4 @@ struct MenuBarView: View {
     }
 }
 
-// MARK: - Visual Effect Background
 
-/// NSVisualEffectView wrapper that provides a solid, opaque popover background
-/// instead of the default translucent material.
-struct VisualEffectBackground: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = .popover
-        view.blendingMode = .behindWindow
-        view.state = .active
-        view.isEmphasized = true
-        return view
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
-}

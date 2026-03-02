@@ -7,13 +7,31 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
     override init() {
         super.init()
+        // Must be set early so the delegate is in place before any
+        // notifications are scheduled. The delegate reference is weak,
+        // but NotificationService is retained by AppDelegate for the
+        // lifetime of the app.
         center.delegate = self
     }
 
     func requestAuthorization() {
-        center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-            if let error = error {
-                print("Notification authorization error: \(error)")
+        // Check current authorization status first. If already determined,
+        // don't re-prompt — just log the state for debugging.
+        center.getNotificationSettings { [weak self] settings in
+            switch settings.authorizationStatus {
+            case .notDetermined:
+                self?.center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+                    if let error = error {
+                        print("[Initiated] Notification authorization error: \(error)")
+                    }
+                    print("[Initiated] Notification authorization granted: \(granted)")
+                }
+            case .denied:
+                print("[Initiated] Notifications denied by user. Open System Settings > Notifications to enable.")
+            case .authorized, .provisional, .ephemeral:
+                print("[Initiated] Notifications authorized")
+            @unknown default:
+                break
             }
         }
     }
@@ -46,7 +64,9 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
         center.add(request) { error in
             if let error = error {
-                print("Failed to send notification: \(error)")
+                print("[Initiated] Failed to schedule notification: \(error)")
+            } else {
+                print("[Initiated] Notification scheduled for workflow \(workflow.id): \(workflow.name)")
             }
         }
     }
