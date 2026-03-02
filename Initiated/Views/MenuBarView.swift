@@ -54,30 +54,34 @@ struct MenuBarView: View {
 
     private var workflowListView: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 0) {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                 // Running section
                 if !runningWorkflows.isEmpty {
-                    sectionHeader(title: "Running", count: runningWorkflows.count)
-
-                    ForEach(runningWorkflows) { workflow in
-                        WorkflowRowView(workflow: workflow) {
-                            if let url = URL(string: workflow.htmlUrl) {
-                                NSWorkspace.shared.open(url)
+                    Section {
+                        ForEach(runningWorkflows) { workflow in
+                            WorkflowRowView(workflow: workflow) {
+                                if let url = URL(string: workflow.htmlUrl) {
+                                    NSWorkspace.shared.open(url)
+                                }
                             }
                         }
+                    } header: {
+                        sectionHeader(title: "Running", count: runningWorkflows.count)
                     }
                 }
 
                 // Recent section
                 if !recentWorkflows.isEmpty {
-                    sectionHeader(title: "Recent", count: nil)
-
-                    ForEach(recentWorkflows) { workflow in
-                        WorkflowRowView(workflow: workflow) {
-                            if let url = URL(string: workflow.htmlUrl) {
-                                NSWorkspace.shared.open(url)
+                    Section {
+                        ForEach(recentWorkflows) { workflow in
+                            WorkflowRowView(workflow: workflow) {
+                                if let url = URL(string: workflow.htmlUrl) {
+                                    NSWorkspace.shared.open(url)
+                                }
                             }
                         }
+                    } header: {
+                        sectionHeader(title: "Recent", count: nil)
                     }
                 }
             }
@@ -109,6 +113,7 @@ struct MenuBarView: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 4)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     // MARK: - Footer Bar
