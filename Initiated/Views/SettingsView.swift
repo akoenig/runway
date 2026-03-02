@@ -215,7 +215,7 @@ struct SettingsView: View {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 8, weight: .semibold))
                     }
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(Color.accentColor.opacity(0.08))
@@ -403,7 +403,7 @@ struct RepoSelectionView: View {
                 } label: {
                     Text("All")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.accentColor)
+                        .foregroundStyle(Color.accentColor)
                 }
                 .buttonStyle(.plain)
                 .disabled(viewModel.selectedRepos.count == viewModel.availableRepos.count)
@@ -416,7 +416,7 @@ struct RepoSelectionView: View {
                 } label: {
                     Text("None")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.accentColor)
+                        .foregroundStyle(Color.accentColor)
                 }
                 .buttonStyle(.plain)
                 .disabled(viewModel.selectedRepos.isEmpty)
@@ -490,7 +490,7 @@ struct RepoSelectionView: View {
                 } label: {
                     Text("Retry")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.accentColor)
+                        .foregroundStyle(Color.accentColor)
                 }
                 .buttonStyle(.plain)
             }
@@ -520,7 +520,7 @@ struct RepoSelectionView: View {
 
                             if viewModel.selectedRepos.contains(repo.displayFullName) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.accentColor)
+                                    .foregroundStyle(Color.accentColor)
                                     .font(.system(size: 16))
                             } else {
                                 Circle()

@@ -153,7 +153,7 @@ struct MenuBarView: View {
             } label: {
                 Text("Retry")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 4)
                     .background(
