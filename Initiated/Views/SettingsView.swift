@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @Bindable var viewModel: AppViewModel
+    @ObservedObject var viewModel: AppViewModel
     @State private var patInput: String = ""
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct MenuBarView: View {
-    @Bindable var viewModel: AppViewModel
+    @ObservedObject var viewModel: AppViewModel
     @State private var showSettings: Bool = false
 
     var body: some View {

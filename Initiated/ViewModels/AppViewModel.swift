@@ -1,14 +1,14 @@
 import Foundation
 import AppKit
 
-@MainActor
-final class AppViewModel: ObservableObject {
-    @Published var workflows: [WorkflowRun] = []
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
-    @Published var githubUser: GitHubUser?
-    @Published var isAuthenticated: Bool = false
-    @Published var pollingInterval: Int {
+@Observable
+final class AppViewModel {
+    var workflows: [WorkflowRun] = []
+    var isLoading: Bool = false
+    var errorMessage: String?
+    var githubUser: GitHubUser?
+    var isAuthenticated: Bool = false
+    var pollingInterval: Int = 30 {
         didSet {
             UserDefaults.standard.set(pollingInterval, forKey: "pollingInterval")
             restartPolling()
@@ -18,7 +18,6 @@ final class AppViewModel: ObservableObject {
     var onWorkflowCompleted: ((WorkflowRun) -> Void)?
 
     private var monitoringTask: Task<Void, Never>?
-    private var previousWorkflowIds: Set<Int> = []
     private var previousCompletedWorkflowIds: Set<Int> = []
 
     var overallStatus: WorkflowStatus {
@@ -48,9 +47,9 @@ final class AppViewModel: ObservableObject {
     }
 
     init() {
-        self.pollingInterval = UserDefaults.standard.integer(forKey: "pollingInterval")
-        if pollingInterval == 0 {
-            pollingInterval = 30
+        let stored = UserDefaults.standard.integer(forKey: "pollingInterval")
+        if stored > 0 {
+            pollingInterval = stored
         }
 
         loadSavedSettings()
@@ -60,7 +59,7 @@ final class AppViewModel: ObservableObject {
         if KeychainService.shared.hasToken {
             isAuthenticated = true
 
-            Task {
+            Task { @MainActor in
                 do {
                     let user = try await GitHubService.shared.validateToken()
                     githubUser = user
@@ -76,8 +75,9 @@ final class AppViewModel: ObservableObject {
         UserDefaults.standard.set(pollingInterval, forKey: "pollingInterval")
     }
 
+    @MainActor
     func startMonitoring() async {
-        guard isAuthenticated, let user = githubUser else { return }
+        guard isAuthenticated, githubUser != nil else { return }
 
         await fetchWorkflowRuns()
         startPolling()
@@ -91,7 +91,7 @@ final class AppViewModel: ObservableObject {
     private func startPolling() {
         monitoringTask?.cancel()
 
-        monitoringTask = Task {
+        monitoringTask = Task { @MainActor in
             while !Task.isCancelled {
                 await fetchWorkflowRuns()
                 try? await Task.sleep(nanoseconds: UInt64(pollingInterval) * 1_000_000_000)
@@ -105,13 +105,12 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    @MainActor
     func fetchWorkflowRuns() async {
         guard let user = githubUser else { return }
 
-        await MainActor.run {
-            isLoading = true
-            errorMessage = nil
-        }
+        isLoading = true
+        errorMessage = nil
 
         do {
             let runs = try await GitHubService.shared.fetchWorkflowRuns(actor: user.login)
@@ -127,16 +126,12 @@ final class AppViewModel: ObservableObject {
 
             previousCompletedWorkflowIds = currentCompletedIds
 
-            await MainActor.run {
-                self.workflows = runs
-                self.isLoading = false
-                updateStatusIcon()
-            }
+            self.workflows = runs
+            self.isLoading = false
+            updateStatusIcon()
         } catch {
-            await MainActor.run {
-                self.errorMessage = error.localizedDescription
-                self.isLoading = false
-            }
+            self.errorMessage = error.localizedDescription
+            self.isLoading = false
         }
     }
 
