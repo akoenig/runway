@@ -50,19 +50,24 @@ struct SettingsView: View {
 
     private var connectedRow: some View {
         HStack(spacing: 12) {
-            // Avatar placeholder
-            ZStack {
-                Circle()
-                    .fill(Color.green.opacity(0.15))
-                    .frame(width: 32, height: 32)
-
-                Circle()
-                    .stroke(Color.green.opacity(0.4), lineWidth: 1.5)
-                    .frame(width: 32, height: 32)
-
-                Text(String((viewModel.githubUser?.login ?? "?").prefix(1)).uppercased())
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.green)
+            // GitHub profile image with fallback to initial letter
+            if let avatarUrlString = viewModel.githubUser?.avatarUrl,
+               let avatarUrl = URL(string: avatarUrlString) {
+                AsyncImage(url: avatarUrl) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 32, height: 32)
+                            .clipShape(Circle())
+                    default:
+                        avatarFallback
+                    }
+                }
+                .frame(width: 32, height: 32)
+            } else {
+                avatarFallback
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -97,6 +102,18 @@ struct SettingsView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    private var avatarFallback: some View {
+        ZStack {
+            Circle()
+                .fill(Color.green.opacity(0.15))
+                .frame(width: 32, height: 32)
+
+            Text(String((viewModel.githubUser?.login ?? "?").prefix(1)).uppercased())
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.green)
+        }
     }
 
     private var tokenInputSection: some View {
