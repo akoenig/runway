@@ -4,11 +4,16 @@ import SwiftUI
 struct MenuBarView: View {
     @ObservedObject var viewModel: AppViewModel
     @State private var showSettings: Bool = false
+    @State private var selectedWorkflow: WorkflowRun?
 
     var body: some View {
         VStack(spacing: 0) {
             if showSettings {
                 SettingsView(viewModel: viewModel, showSettings: $showSettings)
+            } else if let workflow = selectedWorkflow, workflow.workflowStatus == .failure {
+                WorkflowDetailView(workflow: workflow) {
+                    selectedWorkflow = nil
+                }
             } else {
                 mainContent
             }
@@ -59,11 +64,15 @@ struct MenuBarView: View {
                 if !runningWorkflows.isEmpty {
                     Section {
                         ForEach(runningWorkflows) { workflow in
-                            WorkflowRowView(workflow: workflow) {
-                                if let url = URL(string: workflow.htmlUrl) {
-                                    NSWorkspace.shared.open(url)
-                                }
-                            }
+                            WorkflowRowView(
+                                workflow: workflow,
+                                onTap: {
+                                    if let url = URL(string: workflow.htmlUrl) {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                },
+                                onDetail: { selectedWorkflow = workflow }
+                            )
                         }
                     } header: {
                         sectionHeader(title: "Running", count: runningWorkflows.count)
@@ -74,11 +83,15 @@ struct MenuBarView: View {
                 if !recentWorkflows.isEmpty {
                     Section {
                         ForEach(recentWorkflows) { workflow in
-                            WorkflowRowView(workflow: workflow) {
-                                if let url = URL(string: workflow.htmlUrl) {
-                                    NSWorkspace.shared.open(url)
-                                }
-                            }
+                            WorkflowRowView(
+                                workflow: workflow,
+                                onTap: {
+                                    if let url = URL(string: workflow.htmlUrl) {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                },
+                                onDetail: { selectedWorkflow = workflow }
+                            )
                         }
                     } header: {
                         sectionHeader(title: "Recent", count: nil)

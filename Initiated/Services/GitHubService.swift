@@ -165,6 +165,46 @@ final class GitHubService {
         }
     }
 
+    func fetchJobs(runId: Int, repo: Repository) async throws -> [WorkflowJob] {
+        let owner = repo.owner?.login ?? "unknown"
+        let request = try createRequest(
+            path: "/repos/\(owner)/\(repo.name)/actions/runs/\(runId)/jobs?per_page=100"
+        )
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw GitHubAPIError.invalidResponse
+        }
+        guard httpResponse.statusCode == 200 else {
+            let message = String(data: data, encoding: .utf8)
+            throw GitHubAPIError.httpError(statusCode: httpResponse.statusCode, message: message)
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let dateString = try container.decode(String.self)
+                let withFractional = ISO8601DateFormatter()
+                withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                let withoutFractional = ISO8601DateFormatter()
+                withoutFractional.formatOptions = [.withInternetDateTime]
+                if let date = withFractional.date(from: dateString) { return date }
+                if let date = withoutFractional.date(from: dateString) { return date }
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Invalid date: \(dateString)"
+                )
+            }
+            let jobsResponse = try decoder.decode(WorkflowJobsResponse.self, from: data)
+            return jobsResponse.jobs
+        } catch {
+            throw GitHubAPIError.decodingError(error)
+        }
+    }
+
     func fetchWorkflowRuns(forSelectedRepos selectedRepoNames: [String], maxRuns: Int = 10) async throws -> [WorkflowRun] {
         // First, get user's repos
         let repos = try await fetchUserRepos(perPage: 100)
