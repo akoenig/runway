@@ -8,9 +8,19 @@ struct WorkflowDetailView: View {
     @State private var jobs: [WorkflowJob] = []
     @State private var isLoading: Bool = false
     @State private var fetchError: String?
-    @State private var copied: Bool = false
+    @State private var selectedJob: WorkflowJob?
 
     var body: some View {
+        if let job = selectedJob {
+            JobLogView(job: job, repo: workflow.repository) {
+                selectedJob = nil
+            }
+        } else {
+            detailBody
+        }
+    }
+
+    private var detailBody: some View {
         VStack(spacing: 0) {
             headerBar
             Divider().opacity(0.3)
@@ -136,7 +146,7 @@ struct WorkflowDetailView: View {
 
                 // Jobs
                 ForEach(jobs) { job in
-                    JobRowView(job: job)
+                    JobRowView(job: job, onViewLog: job.isFailed ? { selectedJob = job } : nil)
                 }
             }
             .padding(.vertical, 8)
@@ -163,28 +173,9 @@ struct WorkflowDetailView: View {
     // MARK: - Footer
 
     private var footerBar: some View {
-        HStack(spacing: 8) {
-            // Copy summary button
-            Button {
-                copyToClipboard()
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 11, weight: .medium))
-                    Text(copied ? "Copied" : "Copy Summary")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .foregroundStyle(copied ? .green : .secondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.primary.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 7))
-            }
-            .buttonStyle(.plain)
-
+        HStack {
             Spacer()
 
-            // Open on GitHub
             Button {
                 if let url = URL(string: workflow.htmlUrl) {
                     NSWorkspace.shared.open(url)
@@ -214,44 +205,6 @@ struct WorkflowDetailView: View {
         workflow.workflowStatus == .failure ? .red : .green
     }
 
-    private func copyToClipboard() {
-        let summary = buildSummary()
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(summary, forType: .string)
-
-        withAnimation(.easeInOut(duration: 0.15)) {
-            copied = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                copied = false
-            }
-        }
-    }
-
-    private func buildSummary() -> String {
-        var lines: [String] = []
-        lines.append("Workflow: \(workflow.name)")
-        lines.append("Repository: \(workflow.repository.displayFullName)")
-        lines.append("Branch: \(workflow.headBranch)")
-        lines.append("Status: \(workflow.workflowStatus == .failure ? "Failed" : "Success")")
-        lines.append("URL: \(workflow.htmlUrl)")
-
-        let failedJobs = jobs.filter { $0.isFailed }
-        if !failedJobs.isEmpty {
-            lines.append("")
-            lines.append("Failed Jobs:")
-            for job in failedJobs {
-                lines.append("  • \(job.name)")
-                let failedSteps = job.steps.filter { $0.isFailed }
-                for step in failedSteps {
-                    lines.append("    ✗ \(step.name)")
-                }
-            }
-        }
-        return lines.joined(separator: "\n")
-    }
-
     // MARK: - Lifecycle
 
     func load() async {
@@ -273,10 +226,12 @@ struct WorkflowDetailView: View {
 
 private struct JobRowView: View {
     let job: WorkflowJob
+    let onViewLog: (() -> Void)?
     @State private var expanded: Bool
 
-    init(job: WorkflowJob) {
+    init(job: WorkflowJob, onViewLog: (() -> Void)? = nil) {
         self.job = job
+        self.onViewLog = onViewLog
         // Auto-expand failed jobs
         _expanded = State(initialValue: job.isFailed)
     }
@@ -321,6 +276,29 @@ private struct JobRowView: View {
                 VStack(spacing: 0) {
                     ForEach(job.steps.filter { !$0.isSkipped }) { step in
                         StepRowView(step: step)
+                    }
+
+                    // View Log row — only for failed jobs
+                    if job.isFailed, let viewLog = onViewLog {
+                        Button(action: viewLog) {
+                            HStack(spacing: 6) {
+                                Spacer().frame(width: 27 + 10) // align with step indent
+                                Image(systemName: "doc.plaintext")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(.red.opacity(0.7))
+                                Text("View Log")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.red.opacity(0.7))
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(.red.opacity(0.4))
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 7)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.bottom, 4)

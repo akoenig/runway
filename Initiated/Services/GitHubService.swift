@@ -205,6 +205,79 @@ final class GitHubService {
         }
     }
 
+    func fetchJobLogs(jobId: Int, repo: Repository) async throws -> [LogLine] {
+        let owner = repo.owner?.login ?? "unknown"
+        let request = try createRequest(
+            path: "/repos/\(owner)/\(repo.name)/actions/jobs/\(jobId)/logs"
+        )
+
+        // URLSession follows the 302 redirect automatically; the final response is plain text.
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw GitHubAPIError.invalidResponse
+        }
+        guard httpResponse.statusCode == 200 else {
+            let message = String(data: data, encoding: .utf8)
+            throw GitHubAPIError.httpError(statusCode: httpResponse.statusCode, message: message)
+        }
+
+        let raw = String(data: data, encoding: .utf8) ?? ""
+        return GitHubService.parseLogLines(raw)
+    }
+
+    /// Parse raw GitHub Actions log text into structured `LogLine` values.
+    static func parseLogLines(_ raw: String) -> [LogLine] {
+        // Regex to strip the leading ISO8601 timestamp: "2024-01-15T10:23:45.1234567Z "
+        let timestampPattern = #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z "#
+        let timestampRegex = try? NSRegularExpression(pattern: timestampPattern)
+
+        // ANSI escape code pattern
+        let ansiPattern = #"\x1B\[[0-9;]*[mGKHF]"#
+        let ansiRegex = try? NSRegularExpression(pattern: ansiPattern)
+
+        var lines: [LogLine] = []
+
+        for rawLine in raw.components(separatedBy: "\n") {
+            var line = rawLine
+
+            // Strip timestamp prefix
+            if let regex = timestampRegex {
+                let range = NSRange(line.startIndex..., in: line)
+                line = regex.stringByReplacingMatches(in: line, range: range, withTemplate: "")
+            }
+
+            // Strip ANSI codes
+            if let regex = ansiRegex {
+                let range = NSRange(line.startIndex..., in: line)
+                line = regex.stringByReplacingMatches(in: line, range: range, withTemplate: "")
+            }
+
+            // Skip pure group markers (keep content lines)
+            if line == "##[group]" || line == "##[endgroup]" || line.trimmingCharacters(in: .whitespaces).isEmpty {
+                continue
+            }
+
+            let isError = line.hasPrefix("##[error]")
+            let isWarning = line.hasPrefix("##[warning]")
+
+            // Strip directive prefix so UI shows clean content
+            if isError {
+                line = String(line.dropFirst("##[error]".count))
+            } else if isWarning {
+                line = String(line.dropFirst("##[warning]".count))
+            } else if line.hasPrefix("##[group]") {
+                line = String(line.dropFirst("##[group]".count))
+            } else if line.hasPrefix("##[endgroup]") {
+                line = String(line.dropFirst("##[endgroup]".count))
+            }
+
+            lines.append(LogLine(content: line, isError: isError, isWarning: isWarning))
+        }
+
+        return lines
+    }
+
     func fetchWorkflowRuns(forSelectedRepos selectedRepoNames: [String], maxRuns: Int = 10) async throws -> [WorkflowRun] {
         // First, get user's repos
         let repos = try await fetchUserRepos(perPage: 100)

@@ -1,5 +1,12 @@
 import Foundation
 
+struct LogLine: Identifiable {
+    let id = UUID()
+    let content: String
+    let isError: Bool
+    let isWarning: Bool
+}
+
 struct WorkflowStep: Codable, Identifiable {
     let number: Int
     let name: String
