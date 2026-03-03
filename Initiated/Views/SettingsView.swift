@@ -21,6 +21,7 @@ struct SettingsView: View {
                     }
                     pollingSection
                     shortcutSection
+                    loginItemSection
                     quitSection
                 }
                 .padding(.vertical, 8)
@@ -329,6 +330,39 @@ struct SettingsView: View {
 
                     Spacer()
                 }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        }
+    }
+
+    // MARK: - Login Item
+
+    private var loginItemSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(title: "General")
+
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Start at Login")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.primary)
+
+                    Text("Launch Initiated automatically when you log in")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                }
+
+                Spacer()
+
+                Toggle("", isOn: Binding(
+                    get: { LoginItemService.shared.isEnabled },
+                    set: { _ in
+                        try? LoginItemService.shared.toggle()
+                    }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
