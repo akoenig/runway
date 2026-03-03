@@ -32,20 +32,20 @@ jobs:
         run: xcodegen generate
 
       - name: Build
-        run: xcodebuild -project Initiated.xcodeproj -scheme Initiated -configuration Debug build
+        run: xcodebuild -project Runway.xcodeproj -scheme Runway -configuration Debug build
 
       - name: Create archive
         run: |
-          xcodebuild -project Initiated.xcodeproj \
-            -scheme Initiated \
+          xcodebuild -project Runway.xcodeproj \
+            -scheme Runway \
             -configuration Release \
-            -archivePath ./Initiated.xcarchive \
+            -archivePath ./Runway.xcarchive \
             archive
 
       - name: Create DMG
         run: |
           mkdir -p build/Applications
-          cp -R Initiated.xcarchive/Products/Applications/Initiated.app build/Applications/
+          cp -R Runway.xcarchive/Products/Applications/Runway.app build/Applications/
           
           # Install create-dmg if needed
           if ! command -v create-dmg &> /dev/null; then
@@ -53,15 +53,15 @@ jobs:
           fi
           
           create-dmg \
-            --volname "Initiated-${{ steps.version.outputs.VERSION }}" \
-            "build/Initiated-${{ steps.version.outputs.VERSION }}.dmg" \
+            --volname "Runway-${{ steps.version.outputs.VERSION }}" \
+            "build/Runway-${{ steps.version.outputs.VERSION }}.dmg" \
             "build/"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Initiated-${{ steps.version.outputs.VERSION }}
-          path: build/Initiated-${{ steps.version.outputs.VERSION }}.dmg
+          name: Runway-${{ steps.version.outputs.VERSION }}
+          path: build/Runway-${{ steps.version.outputs.VERSION }}.dmg
 
   release:
     needs: build

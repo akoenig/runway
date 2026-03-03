@@ -1,4 +1,4 @@
-# Initiated
+# Runway
 
 A native macOS menu bar app that monitors your GitHub Actions workflows. Track the status of your workflows directly from the menu bar with beautiful color-coded indicators and native notifications.
 
@@ -30,8 +30,8 @@ A native macOS menu bar app that monitors your GitHub Actions workflows. Track t
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/akoenig/initiated.git
-   cd initiated
+   git clone https://github.com/akoenig/runway.git
+   cd runway
    ```
 
 2. Generate the Xcode project:
@@ -41,14 +41,14 @@ A native macOS menu bar app that monitors your GitHub Actions workflows. Track t
 
 3. Open in Xcode:
    ```bash
-   open Initiated.xcodeproj
+   open Runway.xcodeproj
    ```
 
 4. Build and run (Cmd+R)
 
 ## Setting Up GitHub Personal Access Token
 
-To use Initiated, you need a GitHub Personal Access Token (PAT) with the following scopes:
+To use Runway, you need a GitHub Personal Access Token (PAT) with the following scopes:
 
 ### Required Scopes
 
@@ -61,7 +61,7 @@ To use Initiated, you need a GitHub Personal Access Token (PAT) with the followi
 
 1. Go to [GitHub Settings → Personal access tokens → Tokens (classic)](https://github.com/settings/tokens)
 2. Click "Generate new token (classic)"
-3. Give it a descriptive name (e.g., "Initiated macOS App")
+3. Give it a descriptive name (e.g., "Runway macOS App")
 4. Select the following scopes:
    - ☑️ `repo` (Full control of private repositories)
    - ☑️ `workflow` (Update GitHub Action workflows)
@@ -74,7 +74,7 @@ Your PAT is stored securely in the macOS Keychain, not in plain text. The app on
 
 ## Usage
 
-1. **Launch the app** - Initiated appears as a dot in your menu bar (no Dock icon)
+1. **Launch the app** - Runway appears as a dot in your menu bar (no Dock icon)
 2. **Click the menu bar icon** - Opens the main popover
 3. **Click the gear icon** - Opens Settings
 4. **Enter your PAT** - Click "Connect" to authenticate
@@ -106,43 +106,11 @@ Clicking the notification opens the workflow in GitHub.
 
 ## Preferences
 
-Customize Initiated via the Settings popover:
+Customize Runway via the Settings popover:
 
 - **GitHub PAT**: Your authentication token
 - **Polling Interval**: How often to check for updates (15s, 30s, 1m, 2m)
 - **Quit**: Exit the application
-
-## Architecture
-
-Initiated is built with modern macOS development practices:
-
-- **SwiftUI** for all UI components
-- **AppKit** for menu bar integration
-- **MVVM** architecture with `@Observable`
-- **Async/await** for all network operations
-- **Keychain** for secure token storage
-
-### Project Structure
-
-```
-Initiated/
-├── App/
-│   ├── InitiatedApp.swift       # SwiftUI App entry point
-│   └── AppDelegate.swift        # Menu bar setup & management
-├── Models/
-│   ├── WorkflowRun.swift        # Workflow data model
-│   └── GitHubUser.swift         # GitHub user model
-├── Services/
-│   ├── GitHubService.swift      # GitHub API client
-│   ├── KeychainService.swift    # Secure token storage
-│   └── NotificationService.swift # macOS notifications
-├── ViewModels/
-│   └── AppViewModel.swift       # Main application state
-└── Views/
-    ├── MenuBarView.swift        # Main popover content
-    ├── WorkflowRowView.swift    # Individual workflow row
-    └── SettingsView.swift       # Settings/connection view
-```
 
 ## Troubleshooting
 
@@ -160,7 +128,7 @@ Initiated/
 
 ### Notifications not working
 
-- Check System Settings → Notifications → Allow Initiated
+- Check System Settings → Notifications → Allow Runway
 - Make sure notifications are enabled in the app
 
 ## Contributing

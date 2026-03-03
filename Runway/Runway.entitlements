@@ -8,7 +8,7 @@
     <true/>
     <key>keychain-access-groups</key>
     <array>
-        <string>$(AppIdentifierPrefix)com.initiated.app</string>
+        <string>$(AppIdentifierPrefix)com.andrekoenig.runway</string>
     </array>
 </dict>
 </plist>

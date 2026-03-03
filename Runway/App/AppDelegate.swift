@@ -17,7 +17,7 @@ private func hotkeyCallback(
 }
 
 private extension Notification.Name {
-    static let hotkeyToggle = Notification.Name("com.initiated.hotkeyToggle")
+    static let hotkeyToggle = Notification.Name("com.andrekoenig.runway.hotkeyToggle")
 }
 
 @MainActor

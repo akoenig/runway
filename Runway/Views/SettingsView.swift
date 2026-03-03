@@ -348,7 +348,7 @@ struct SettingsView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.primary)
 
-                    Text("Launch Initiated automatically when you log in")
+                    Text("Launch Runway automatically when you log in")
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                 }
@@ -381,7 +381,7 @@ struct SettingsView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "power")
                         .font(.system(size: 11))
-                    Text("Quit Initiated")
+                    Text("Quit Runway")
                         .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundStyle(.red)

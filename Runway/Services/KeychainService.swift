@@ -24,7 +24,7 @@ enum KeychainError: Error, LocalizedError {
 final class KeychainService {
     static let shared = KeychainService()
     
-    private let service = "com.initiated.app"
+    private let service = "com.andrekoenig.runway"
     private let tokenKey = "github_pat"
 
     private init() {}

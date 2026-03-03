@@ -1,6 +1,6 @@
-name: Initiated
+name: Runway
 options:
-  bundleIdPrefix: com.initiated
+  bundleIdPrefix: com.andrekoenig.runway
   deploymentTarget:
     macOS: "14.0"
   xcodeVersion: "15.0"
@@ -14,22 +14,22 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
 
 targets:
-  Initiated:
+  Runway:
     type: application
     platform: macOS
     sources:
-      - path: Initiated
+      - path: Runway
         excludes:
           - "**/.DS_Store"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.initiated.app
-        PRODUCT_NAME: Initiated
-        INFOPLIST_FILE: Initiated/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Initiated/Initiated.entitlements
+        PRODUCT_BUNDLE_IDENTIFIER: com.andrekoenig.runway
+        PRODUCT_NAME: Runway
+        INFOPLIST_FILE: Runway/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Runway/Runway.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         COMBINE_HIDPI_IMAGES: YES
         LD_RUNPATH_SEARCH_PATHS:
           - "@executable_path/../Frameworks"
     entitlements:
-      path: Initiated/Initiated.entitlements
+      path: Runway/Runway.entitlements

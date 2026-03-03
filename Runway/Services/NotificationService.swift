@@ -22,14 +22,14 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             case .notDetermined:
                 self?.center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
                     if let error = error {
-                        print("[Initiated] Notification authorization error: \(error)")
+                        print("[Runway] Notification authorization error: \(error)")
                     }
-                    print("[Initiated] Notification authorization granted: \(granted)")
+                    print("[Runway] Notification authorization granted: \(granted)")
                 }
             case .denied:
-                print("[Initiated] Notifications denied by user. Open System Settings > Notifications to enable.")
+                print("[Runway] Notifications denied by user. Open System Settings > Notifications to enable.")
             case .authorized, .provisional, .ephemeral:
-                print("[Initiated] Notifications authorized")
+                print("[Runway] Notifications authorized")
             @unknown default:
                 break
             }
@@ -64,9 +64,9 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
         center.add(request) { error in
             if let error = error {
-                print("[Initiated] Failed to schedule notification: \(error)")
+                print("[Runway] Failed to schedule notification: \(error)")
             } else {
-                print("[Initiated] Notification scheduled for workflow \(workflow.id): \(workflow.name)")
+                print("[Runway] Notification scheduled for workflow \(workflow.id): \(workflow.name)")
             }
         }
     }
