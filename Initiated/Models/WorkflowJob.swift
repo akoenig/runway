@@ -5,6 +5,8 @@ struct LogLine: Identifiable {
     let content: String
     let isError: Bool
     let isWarning: Bool
+    /// 1-based step number this line belongs to, matching `WorkflowStep.number`.
+    let stepNumber: Int
 }
 
 struct WorkflowStep: Codable, Identifiable {
@@ -19,8 +21,16 @@ struct WorkflowStep: Codable, Identifiable {
         conclusion == "failure" || conclusion == "timed_out"
     }
 
+    var isInProgress: Bool {
+        status == "in_progress"
+    }
+
     var isSkipped: Bool {
         conclusion == "skipped"
+    }
+
+    var isSuccess: Bool {
+        conclusion == "success"
     }
 }
 
@@ -36,6 +46,10 @@ struct WorkflowJob: Codable, Identifiable {
 
     var isFailed: Bool {
         conclusion == "failure" || conclusion == "timed_out"
+    }
+
+    var isInProgress: Bool {
+        status == "in_progress"
     }
 
     /// Duration in seconds, nil if not yet complete.

@@ -3,13 +3,18 @@ import SwiftUI
 
 struct JobLogView: View {
     let job: WorkflowJob
+    let step: WorkflowStep
     let repo: Repository
     let onBack: () -> Void
 
-    @State private var lines: [LogLine] = []
+    @State private var allLines: [LogLine] = []
     @State private var isLoading = true
     @State private var fetchError: String?
     @State private var copied = false
+
+    private var stepLines: [LogLine] {
+        allLines.filter { $0.stepNumber == step.number }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,20 +41,38 @@ struct JobLogView: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(job.name)
+                Text(step.name)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                Text("Job Log")
+                Text(job.name)
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
+                    .lineLimit(1)
             }
 
             Spacer()
+
+            stepStatusBadge
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+    }
+
+    private var stepStatusBadge: some View {
+        let color: Color = step.isFailed ? .red : (step.isInProgress ? .orange : .green)
+        let label: String = step.isFailed ? "Failed" : (step.isInProgress ? "Running" : "Success")
+        return HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 6, height: 6)
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(color)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(color.opacity(0.1))
+        .clipShape(Capsule())
     }
 
     // MARK: - Content
@@ -60,7 +83,7 @@ struct JobLogView: View {
             loadingView
         } else if let error = fetchError {
             errorView(message: error)
-        } else if lines.isEmpty {
+        } else if stepLines.isEmpty {
             emptyView
         } else {
             logScrollView
@@ -101,7 +124,7 @@ struct JobLogView: View {
     private var emptyView: some View {
         VStack(spacing: 8) {
             Spacer()
-            Text("No log output available")
+            Text("No log output for this step")
                 .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
             Spacer()
@@ -111,7 +134,7 @@ struct JobLogView: View {
     private var logScrollView: some View {
         ScrollView(.vertical, showsIndicators: true) {
             LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(lines) { line in
+                ForEach(stepLines) { line in
                     Text(line.content)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(lineColor(line))
@@ -136,12 +159,12 @@ struct JobLogView: View {
     private var footerBar: some View {
         HStack(spacing: 8) {
             Button {
-                copyErrors()
+                copyStepLog()
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: copied ? "checkmark" : "doc.on.doc")
                         .font(.system(size: 11, weight: .medium))
-                    Text(copied ? "Copied" : "Copy Errors")
+                    Text(copied ? "Copied" : "Copy Log")
                         .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundStyle(copied ? .green : .secondary)
@@ -151,7 +174,7 @@ struct JobLogView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 7))
             }
             .buttonStyle(.plain)
-            .disabled(lines.filter(\.isError).isEmpty)
+            .disabled(stepLines.isEmpty)
 
             Spacer()
 
@@ -180,10 +203,10 @@ struct JobLogView: View {
 
     // MARK: - Helpers
 
-    private func copyErrors() {
-        let errorLines = lines.filter(\.isError).map(\.content).joined(separator: "\n")
+    private func copyStepLog() {
+        let text = stepLines.map(\.content).joined(separator: "\n")
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(errorLines, forType: .string)
+        NSPasteboard.general.setString(text, forType: .string)
 
         withAnimation(.easeInOut(duration: 0.15)) { copied = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
@@ -195,7 +218,7 @@ struct JobLogView: View {
         isLoading = true
         fetchError = nil
         do {
-            lines = try await GitHubService.shared.fetchJobLogs(jobId: job.id, repo: repo)
+            allLines = try await GitHubService.shared.fetchJobLogs(jobId: job.id, repo: repo)
         } catch {
             fetchError = error.localizedDescription
         }

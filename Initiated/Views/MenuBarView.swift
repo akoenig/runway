@@ -10,7 +10,7 @@ struct MenuBarView: View {
         VStack(spacing: 0) {
             if showSettings {
                 SettingsView(viewModel: viewModel, showSettings: $showSettings)
-            } else if let workflow = selectedWorkflow, workflow.workflowStatus == .failure {
+            } else if let workflow = selectedWorkflow {
                 WorkflowDetailView(workflow: workflow) {
                     selectedWorkflow = nil
                 }

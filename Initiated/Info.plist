@@ -19,7 +19,7 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.4.1</string>
+    <string>1.4.2</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
@@ -28,6 +28,8 @@
     <true/>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2024 Initiated. All rights reserved.</string>
+    <key>NSAuthor</key>
+    <string>André König &lt;hi@andrekoenig.com&gt;</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSUserNotificationAlertStyle</key>

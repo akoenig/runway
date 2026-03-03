@@ -227,6 +227,9 @@ final class GitHubService {
     }
 
     /// Parse raw GitHub Actions log text into structured `LogLine` values.
+    /// Each `##[group]` marker starts a new step section; `stepNumber` increments
+    /// with each group so callers can filter lines per step by matching
+    /// `LogLine.stepNumber` to `WorkflowStep.number`.
     static func parseLogLines(_ raw: String) -> [LogLine] {
         // Regex to strip the leading ISO8601 timestamp: "2024-01-15T10:23:45.1234567Z "
         let timestampPattern = #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z "#
@@ -237,6 +240,7 @@ final class GitHubService {
         let ansiRegex = try? NSRegularExpression(pattern: ansiPattern)
 
         var lines: [LogLine] = []
+        var currentStep = 1
 
         for rawLine in raw.components(separatedBy: "\n") {
             var line = rawLine
@@ -253,8 +257,15 @@ final class GitHubService {
                 line = regex.stringByReplacingMatches(in: line, range: range, withTemplate: "")
             }
 
-            // Skip pure group markers (keep content lines)
-            if line == "##[group]" || line == "##[endgroup]" || line.trimmingCharacters(in: .whitespaces).isEmpty {
+            // Each ##[group] starts a new step section
+            if line.hasPrefix("##[group]") {
+                currentStep += 1
+                // Skip the bare group header line itself (it duplicates the step name)
+                continue
+            }
+
+            // Skip endgroup markers and blank lines
+            if line.hasPrefix("##[endgroup]") || line.trimmingCharacters(in: .whitespaces).isEmpty {
                 continue
             }
 
@@ -266,13 +277,9 @@ final class GitHubService {
                 line = String(line.dropFirst("##[error]".count))
             } else if isWarning {
                 line = String(line.dropFirst("##[warning]".count))
-            } else if line.hasPrefix("##[group]") {
-                line = String(line.dropFirst("##[group]".count))
-            } else if line.hasPrefix("##[endgroup]") {
-                line = String(line.dropFirst("##[endgroup]".count))
             }
 
-            lines.append(LogLine(content: line, isError: isError, isWarning: isWarning))
+            lines.append(LogLine(content: line, isError: isError, isWarning: isWarning, stepNumber: currentStep))
         }
 
         return lines

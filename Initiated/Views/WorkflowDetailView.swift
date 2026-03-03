@@ -8,12 +8,21 @@ struct WorkflowDetailView: View {
     @State private var jobs: [WorkflowJob] = []
     @State private var isLoading: Bool = false
     @State private var fetchError: String?
-    @State private var selectedJob: WorkflowJob?
+    /// When set, shows JobLogView for the selected (job, step) pair.
+    @State private var selectedLog: (job: WorkflowJob, step: WorkflowStep)?
+
+    private var isRunning: Bool {
+        workflow.workflowStatus == .running
+    }
 
     var body: some View {
-        if let job = selectedJob {
-            JobLogView(job: job, repo: workflow.repository) {
-                selectedJob = nil
+        if let selection = selectedLog {
+            JobLogView(
+                job: selection.job,
+                step: selection.step,
+                repo: workflow.repository
+            ) {
+                selectedLog = nil
             }
         } else {
             detailBody
@@ -28,7 +37,7 @@ struct WorkflowDetailView: View {
             Divider().opacity(0.3)
             footerBar
         }
-        .task { await load() }
+        .task { await loadAndPoll() }
     }
 
     // MARK: - Header
@@ -57,7 +66,6 @@ struct WorkflowDetailView: View {
 
             Spacer()
 
-            // Status badge
             statusBadge
         }
         .padding(.horizontal, 12)
@@ -65,28 +73,44 @@ struct WorkflowDetailView: View {
     }
 
     private var statusBadge: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 6, height: 6)
-
-            Text(workflow.workflowStatus == .failure ? "Failed" : "Success")
+        let (color, label) = badgeStyle
+        return HStack(spacing: 4) {
+            if isRunning {
+                // Subtle pulse for running state
+                Circle()
+                    .fill(color)
+                    .frame(width: 6, height: 6)
+                    .opacity(isLoading ? 0.5 : 1.0)
+                    .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isLoading)
+            } else {
+                Circle().fill(color).frame(width: 6, height: 6)
+            }
+            Text(label)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(statusColor)
+                .foregroundStyle(color)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(statusColor.opacity(0.1))
+        .background(color.opacity(0.1))
         .clipShape(Capsule())
+    }
+
+    private var badgeStyle: (Color, String) {
+        switch workflow.workflowStatus {
+        case .running: return (.orange, "Running")
+        case .success: return (.green, "Success")
+        case .failure: return (.red, "Failed")
+        case .idle:    return (.gray, "Idle")
+        }
     }
 
     // MARK: - Content
 
     @ViewBuilder
     private var content: some View {
-        if isLoading {
+        if isLoading && jobs.isEmpty {
             loadingView
-        } else if let error = fetchError {
+        } else if let error = fetchError, jobs.isEmpty {
             errorView(message: error)
         } else if jobs.isEmpty {
             emptyJobsView
@@ -139,14 +163,12 @@ struct WorkflowDetailView: View {
     private var jobsList: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 0) {
-                // Branch + timing info
                 metaRow
-
                 Divider().opacity(0.15).padding(.horizontal, 16)
-
-                // Jobs
                 ForEach(jobs) { job in
-                    JobRowView(job: job, onViewLog: job.isFailed ? { selectedJob = job } : nil)
+                    JobRowView(job: job, onViewLog: { step in
+                        selectedLog = (job: job, step: step)
+                    })
                 }
             }
             .padding(.vertical, 8)
@@ -175,7 +197,6 @@ struct WorkflowDetailView: View {
     private var footerBar: some View {
         HStack {
             Spacer()
-
             Button {
                 if let url = URL(string: workflow.htmlUrl) {
                     NSWorkspace.shared.open(url)
@@ -199,15 +220,21 @@ struct WorkflowDetailView: View {
         .padding(.vertical, 8)
     }
 
-    // MARK: - Helpers
-
-    private var statusColor: Color {
-        workflow.workflowStatus == .failure ? .red : .green
-    }
-
     // MARK: - Lifecycle
 
-    func load() async {
+    /// Initial load + polling loop while the workflow is running.
+    private func loadAndPoll() async {
+        await fetchJobs()
+        guard isRunning else { return }
+        // Poll every 5 seconds while workflow is still in-progress
+        while !Task.isCancelled && isRunning {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            if Task.isCancelled { break }
+            await fetchJobs()
+        }
+    }
+
+    private func fetchJobs() async {
         isLoading = true
         fetchError = nil
         do {
@@ -226,14 +253,14 @@ struct WorkflowDetailView: View {
 
 private struct JobRowView: View {
     let job: WorkflowJob
-    let onViewLog: (() -> Void)?
+    let onViewLog: (WorkflowStep) -> Void
     @State private var expanded: Bool
 
-    init(job: WorkflowJob, onViewLog: (() -> Void)? = nil) {
+    init(job: WorkflowJob, onViewLog: @escaping (WorkflowStep) -> Void) {
         self.job = job
         self.onViewLog = onViewLog
-        // Auto-expand failed jobs
-        _expanded = State(initialValue: job.isFailed)
+        // Auto-expand failed and in-progress jobs
+        _expanded = State(initialValue: job.isFailed || job.isInProgress)
     }
 
     var body: some View {
@@ -275,30 +302,7 @@ private struct JobRowView: View {
             if expanded {
                 VStack(spacing: 0) {
                     ForEach(job.steps.filter { !$0.isSkipped }) { step in
-                        StepRowView(step: step)
-                    }
-
-                    // View Log row — only for failed jobs
-                    if job.isFailed, let viewLog = onViewLog {
-                        Button(action: viewLog) {
-                            HStack(spacing: 6) {
-                                Spacer().frame(width: 27 + 10) // align with step indent
-                                Image(systemName: "doc.plaintext")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundStyle(.red.opacity(0.7))
-                                Text("View Log")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(.red.opacity(0.7))
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 9, weight: .semibold))
-                                    .foregroundStyle(.red.opacity(0.4))
-                                Spacer()
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 7)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+                        StepRowView(step: step, onViewLog: { onViewLog(step) })
                     }
                 }
                 .padding(.bottom, 4)
@@ -323,14 +327,14 @@ private struct JobRowView: View {
     private var jobColor: Color {
         if job.isFailed { return .red }
         if job.conclusion == "success" { return .green }
-        if job.status == "in_progress" { return .orange }
+        if job.isInProgress { return .orange }
         return .gray
     }
 
     private var jobIconName: String {
         if job.isFailed { return "xmark" }
         if job.conclusion == "success" { return "checkmark" }
-        if job.status == "in_progress" { return "arrow.trianglehead.clockwise" }
+        if job.isInProgress { return "arrow.trianglehead.clockwise" }
         return "minus"
     }
 }
@@ -339,41 +343,63 @@ private struct JobRowView: View {
 
 private struct StepRowView: View {
     let step: WorkflowStep
+    let onViewLog: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 10) {
-            // Indent line
-            Rectangle()
-                .fill(Color.primary.opacity(0.06))
-                .frame(width: 1)
-                .padding(.leading, 27)
+        Button(action: onViewLog) {
+            HStack(spacing: 10) {
+                // Indent line
+                Rectangle()
+                    .fill(Color.primary.opacity(0.06))
+                    .frame(width: 1)
+                    .padding(.leading, 27)
 
-            Circle()
-                .fill(stepColor)
-                .frame(width: 5, height: 5)
+                Circle()
+                    .fill(stepColor)
+                    .frame(width: 5, height: 5)
 
-            Text(step.name)
-                .font(.system(size: 11))
-                .foregroundStyle(step.isFailed ? .primary : .secondary)
-                .lineLimit(2)
+                Text(step.name)
+                    .font(.system(size: 11))
+                    .foregroundStyle(step.isFailed ? .primary : .secondary)
+                    .lineLimit(2)
 
-            Spacer()
+                Spacer()
 
-            if step.isFailed {
-                Text("failed")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.red.opacity(0.8))
+                if step.isFailed {
+                    Text("failed")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.red.opacity(0.8))
+                } else if step.isInProgress {
+                    Text("running")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.orange.opacity(0.8))
+                }
+
+                Image(systemName: "doc.plaintext")
+                    .font(.system(size: 10))
+                    .foregroundStyle(isHovered ? .primary : .quaternary)
             }
+            .padding(.leading, 16)
+            .padding(.trailing, 16)
+            .padding(.vertical, 5)
+            .background(rowBackground)
+            .contentShape(Rectangle())
         }
-        .padding(.leading, 16)
-        .padding(.trailing, 16)
-        .padding(.vertical, 5)
-        .background(step.isFailed ? Color.red.opacity(0.04) : Color.clear)
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+    }
+
+    private var rowBackground: Color {
+        if isHovered { return Color.primary.opacity(0.05) }
+        if step.isFailed { return Color.red.opacity(0.04) }
+        return Color.clear
     }
 
     private var stepColor: Color {
         if step.isFailed { return .red }
-        if step.conclusion == "success" { return .green }
+        if step.isInProgress { return .orange }
+        if step.isSuccess { return .green }
         return .gray
     }
 }

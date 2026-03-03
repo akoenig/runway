@@ -43,13 +43,6 @@ struct WorkflowRowView: View {
                 Spacer(minLength: 4)
 
                 HStack(spacing: 6) {
-                    // "Details" hint for failed rows
-                    if workflow.workflowStatus == .failure {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.red.opacity(0.6))
-                    }
-
                     Text(workflow.formattedDate)
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
@@ -72,11 +65,7 @@ struct WorkflowRowView: View {
     }
 
     private func handleTap() {
-        if workflow.workflowStatus == .failure {
-            onDetail()
-        } else {
-            onTap()
-        }
+        onDetail()
     }
 
     private var statusColor: Color {
@@ -89,8 +78,6 @@ struct WorkflowRowView: View {
     }
 
     private var hoverColor: Color {
-        workflow.workflowStatus == .failure
-            ? Color.red.opacity(0.05)
-            : Color.primary.opacity(0.06)
+        Color.primary.opacity(0.06)
     }
 }
