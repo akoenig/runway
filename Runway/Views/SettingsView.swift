@@ -84,16 +84,12 @@ struct SettingsView: View {
             Spacer()
 
             Button {
-                Task {
-                    try? KeychainService.shared.deleteToken()
-                    await MainActor.run {
-                        viewModel.isAuthenticated = false
-                        viewModel.githubUser = nil
-                        viewModel.workflows = []
-                        viewModel.selectedRepos = []
-                        viewModel.availableRepos = []
-                    }
-                }
+                try? KeychainService.shared.deleteToken()
+                viewModel.isAuthenticated = false
+                viewModel.githubUser = nil
+                viewModel.workflows = []
+                viewModel.selectedRepos = []
+                viewModel.availableRepos = []
             } label: {
                 Text("Disconnect")
                     .font(.system(size: 11, weight: .medium))
@@ -455,21 +451,17 @@ struct SettingsView: View {
             try KeychainService.shared.saveToken(patInput)
             let user = try await GitHubService.shared.validateToken()
 
-            await MainActor.run {
-                viewModel.githubUser = user
-                viewModel.isAuthenticated = true
-                viewModel.saveSettings()
-                isLoading = false
-                showSettings = false
-            }
+            viewModel.githubUser = user
+            viewModel.isAuthenticated = true
+            viewModel.saveSettings()
+            isLoading = false
+            showSettings = false
 
             await viewModel.startMonitoring()
         } catch {
-            await MainActor.run {
-                errorMessage = error.localizedDescription
-                try? KeychainService.shared.deleteToken()
-                isLoading = false
-            }
+            errorMessage = error.localizedDescription
+            try? KeychainService.shared.deleteToken()
+            isLoading = false
         }
     }
 }
@@ -694,10 +686,15 @@ struct RepoSelectionView: View {
 
 // MARK: - Shortcut Recorder
 
+@MainActor
 final class ShortcutRecorder: ObservableObject {
     @Published var isRecording: Bool = false
 
-    private var monitor: Any?
+    /// Stored as `nonisolated(unsafe)` so `deinit` can clean up the monitor
+    /// without crossing actor boundaries. Safety is ensured because all
+    /// mutations happen on the main actor (the class is `@MainActor`), and
+    /// at deinit time no other references exist.
+    nonisolated(unsafe) private var monitor: Any?
     private var completion: ((UInt16, NSEvent.ModifierFlags, String) -> Void)?
 
     func startRecording(completion: @escaping (UInt16, NSEvent.ModifierFlags, String) -> Void) {
@@ -705,23 +702,25 @@ final class ShortcutRecorder: ObservableObject {
         isRecording = true
 
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self = self else { return event }
+            MainActor.assumeIsolated {
+                guard let self = self else { return }
 
-            // Escape cancels recording
-            if event.keyCode == 53 {
+                // Escape cancels recording
+                if event.keyCode == 53 {
+                    self.stopRecording()
+                    return
+                }
+
+                // Require at least one modifier (Cmd, Opt, Ctrl, Shift)
+                let required: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+                guard !event.modifierFlags.intersection(required).isEmpty else {
+                    return
+                }
+
+                let displayChar = Self.displayString(for: event.keyCode, characters: event.charactersIgnoringModifiers)
+                self.completion?(event.keyCode, event.modifierFlags.intersection(required), displayChar)
                 self.stopRecording()
-                return nil
             }
-
-            // Require at least one modifier (Cmd, Opt, Ctrl, Shift)
-            let required: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
-            guard !event.modifierFlags.intersection(required).isEmpty else {
-                return nil
-            }
-
-            let displayChar = Self.displayString(for: event.keyCode, characters: event.charactersIgnoringModifiers)
-            self.completion?(event.keyCode, event.modifierFlags.intersection(required), displayChar)
-            self.stopRecording()
             return nil
         }
     }
@@ -735,7 +734,9 @@ final class ShortcutRecorder: ObservableObject {
         completion = nil
     }
 
-    deinit {
+    nonisolated deinit {
+        // NSEvent monitor cleanup is safe to call from any context.
+        // At deinit time, no other references exist, so there is no race.
         if let monitor = monitor {
             NSEvent.removeMonitor(monitor)
         }

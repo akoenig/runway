@@ -209,7 +209,8 @@ struct JobLogView: View {
         NSPasteboard.general.setString(text, forType: .string)
 
         withAnimation(.easeInOut(duration: 0.15)) { copied = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+        Task {
+            try? await Task.sleep(for: .seconds(2))
             withAnimation(.easeInOut(duration: 0.15)) { copied = false }
         }
     }

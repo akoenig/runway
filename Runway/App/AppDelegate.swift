@@ -96,17 +96,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupNotifications() {
-        notificationService.requestAuthorization()
+        Task {
+            await notificationService.requestAuthorization()
+        }
 
         viewModel.onWorkflowCompleted = { [weak self] workflow in
-            self?.notificationService.sendNotification(for: workflow)
+            guard let self else { return }
+            Task {
+                await self.notificationService.sendNotification(for: workflow)
+            }
         }
     }
 
     private func setupEventMonitor() {
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            if let popover = self?.popover, popover.isShown {
-                popover.performClose(nil)
+            Task { @MainActor in
+                if let popover = self?.popover, popover.isShown {
+                    popover.performClose(nil)
+                }
             }
         }
     }
@@ -243,26 +250,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         pulsingUp = false
         pulseTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            guard let self = self,
-                  let button = self.statusItem?.button else { return }
+            MainActor.assumeIsolated {
+                guard let self = self,
+                      let button = self.statusItem?.button else { return }
 
-            let current = button.alphaValue
+                let current = button.alphaValue
 
-            if self.pulsingUp {
-                let next = current + 0.03
-                if next >= 1.0 {
-                    button.alphaValue = 1.0
-                    self.pulsingUp = false
+                if self.pulsingUp {
+                    let next = current + 0.03
+                    if next >= 1.0 {
+                        button.alphaValue = 1.0
+                        self.pulsingUp = false
+                    } else {
+                        button.alphaValue = next
+                    }
                 } else {
-                    button.alphaValue = next
-                }
-            } else {
-                let next = current - 0.03
-                if next <= 0.3 {
-                    button.alphaValue = 0.3
-                    self.pulsingUp = true
-                } else {
-                    button.alphaValue = next
+                    let next = current - 0.03
+                    if next <= 0.3 {
+                        button.alphaValue = 0.3
+                        self.pulsingUp = true
+                    } else {
+                        button.alphaValue = next
+                    }
                 }
             }
         }

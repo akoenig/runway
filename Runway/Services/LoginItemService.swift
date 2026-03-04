@@ -2,7 +2,7 @@ import ServiceManagement
 
 /// Wraps SMAppService to register/unregister the app as a login item.
 /// Requires macOS 13+; we target 14 so this is always available.
-final class LoginItemService {
+final class LoginItemService: Sendable {
     static let shared = LoginItemService()
     private init() {}
 

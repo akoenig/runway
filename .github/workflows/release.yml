@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: Checkout
@@ -23,7 +23,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "15.2"
+          xcode-version: "26.2"
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -32,7 +32,7 @@ jobs:
         run: xcodegen generate
 
       - name: Build
-        run: xcodebuild -project Runway.xcodeproj -scheme Runway -configuration Debug build
+        run: xcodebuild -project Runway.xcodeproj -scheme Runway -configuration Debug ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO build
 
       - name: Create archive
         run: |
@@ -40,6 +40,8 @@ jobs:
             -scheme Runway \
             -configuration Release \
             -archivePath ./Runway.xcarchive \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
             archive
 
       - name: Create DMG
@@ -65,7 +67,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: macos-14
+    runs-on: macos-15
     permissions:
       contents: write
 

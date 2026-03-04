@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import UserNotifications
 
+@MainActor
 final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     private let center = UNUserNotificationCenter.current()
 
@@ -14,18 +15,14 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         center.delegate = self
     }
 
-    func requestAuthorization() {
-        // Check current authorization status first. If already determined,
-        // don't re-prompt — just log the state for debugging.
-        center.getNotificationSettings { [weak self] settings in
+    func requestAuthorization() async {
+        do {
+            let settings = await center.notificationSettings()
+
             switch settings.authorizationStatus {
             case .notDetermined:
-                self?.center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-                    if let error = error {
-                        print("[Runway] Notification authorization error: \(error)")
-                    }
-                    print("[Runway] Notification authorization granted: \(granted)")
-                }
+                let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+                print("[Runway] Notification authorization granted: \(granted)")
             case .denied:
                 print("[Runway] Notifications denied by user. Open System Settings > Notifications to enable.")
             case .authorized, .provisional, .ephemeral:
@@ -33,10 +30,12 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             @unknown default:
                 break
             }
+        } catch {
+            print("[Runway] Notification authorization error: \(error)")
         }
     }
 
-    func sendNotification(for workflow: WorkflowRun) {
+    func sendNotification(for workflow: WorkflowRun) async {
         let content = UNMutableNotificationContent()
 
         switch workflow.workflowStatus {
@@ -62,12 +61,11 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             trigger: nil
         )
 
-        center.add(request) { error in
-            if let error = error {
-                print("[Runway] Failed to schedule notification: \(error)")
-            } else {
-                print("[Runway] Notification scheduled for workflow \(workflow.id): \(workflow.name)")
-            }
+        do {
+            try await center.add(request)
+            print("[Runway] Notification scheduled for workflow \(workflow.id): \(workflow.name)")
+        } catch {
+            print("[Runway] Failed to schedule notification: \(error)")
         }
     }
 
@@ -77,23 +75,20 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     /// Without this, macOS silently suppresses notifications for the active app.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        completionHandler([.banner, .sound])
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
     }
 
     /// Open the workflow URL in the browser when the user clicks the notification.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
+        didReceive response: UNNotificationResponse
+    ) async {
         let userInfo = response.notification.request.content.userInfo
         if let urlString = userInfo["url"] as? String,
            let url = URL(string: urlString) {
             NSWorkspace.shared.open(url)
         }
-        completionHandler()
     }
 }

@@ -26,7 +26,7 @@ enum GitHubAPIError: Error, LocalizedError {
     }
 }
 
-final class GitHubService {
+final class GitHubService: @unchecked Sendable {
     static let shared = GitHubService()
     
     private let baseURL = "https://api.github.com"

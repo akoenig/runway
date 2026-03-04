@@ -21,7 +21,7 @@ enum KeychainError: Error, LocalizedError {
     }
 }
 
-final class KeychainService {
+final class KeychainService: Sendable {
     static let shared = KeychainService()
     
     private let service = "com.andrekoenig.runway"

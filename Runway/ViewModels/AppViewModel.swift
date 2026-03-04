@@ -2,6 +2,7 @@ import Foundation
 import AppKit
 import Combine
 
+@MainActor
 final class AppViewModel: ObservableObject {
     @Published var workflows: [WorkflowRun] = []
     @Published var isLoading: Bool = false
@@ -102,7 +103,7 @@ final class AppViewModel: ObservableObject {
         if KeychainService.shared.hasToken {
             isAuthenticated = true
 
-            userValidationTask = Task { @MainActor in
+            userValidationTask = Task {
                 do {
                     let user = try await GitHubService.shared.validateToken()
                     githubUser = user
@@ -163,7 +164,6 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    @MainActor
     func fetchAvailableRepos() async {
         isLoading = true
         errorMessage = nil
@@ -184,7 +184,6 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    @MainActor
     func fetchWorkflowRuns() async {
         guard !selectedRepos.isEmpty else {
             workflows = []
