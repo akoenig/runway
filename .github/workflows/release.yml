@@ -31,6 +31,14 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Run tests
+        run: |
+          xcodebuild test \
+            -project Runway.xcodeproj \
+            -scheme Runway \
+            -destination 'platform=macOS' \
+            -only-testing RunwayTests
+
       - name: Build
         run: xcodebuild -project Runway.xcodeproj -scheme Runway -configuration Debug ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO build
 
