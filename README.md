@@ -13,6 +13,10 @@
   <img src="demo.png" alt="Demo" width="600">
 </p>
 
+<p align="center">
+  <a href="https://github.com/akoenig/runway/raw/refs/heads/main/demo.mp4">Video</a>
+</p>
+
 <br>
 
 ## Why Runway?
