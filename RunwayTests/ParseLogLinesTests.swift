@@ -82,7 +82,7 @@ func multipleAnsiCodes() {
 
 // MARK: - Group Markers
 
-@Test("##[group] and ##[endgroup] lines are excluded from output")
+@Test("Group and endgroup marker lines are excluded from output")
 func groupMarkersSkipped() {
     let raw = """
     2024-01-15T10:00:00.0000000Z ##[group]Run echo hello
@@ -100,7 +100,7 @@ func groupMarkersSkipped() {
 
 // MARK: - Error and Warning Detection
 
-@Test("##[error] prefix is detected and stripped")
+@Test("Error directive prefix is detected and stripped")
 func errorLineDetection() {
     let raw = "2024-01-15T10:00:00.0000000Z ##[error]Process completed with exit code 1."
     let steps = makeSteps([(1, "Set up job")])
@@ -111,7 +111,7 @@ func errorLineDetection() {
     #expect(result[0].content == "Process completed with exit code 1.")
 }
 
-@Test("##[warning] prefix is detected and stripped")
+@Test("Warning directive prefix is detected and stripped")
 func warningLineDetection() {
     let raw = "2024-01-15T10:00:00.0000000Z ##[warning]Node.js 16 actions are deprecated."
     let steps = makeSteps([(1, "Set up job")])
