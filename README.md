@@ -9,16 +9,7 @@
   Know the moment your workflows pass or fail - without leaving your context.
 </p>
 
-<p align="center">
-  <a href="https://github.com/akoenig/runway/releases/latest"><img src="https://img.shields.io/github/v/release/akoenig/runway?label=Download&color=007AFF&style=flat-square" alt="Download"></a>&nbsp;
-  <img src="https://img.shields.io/badge/macOS_14+-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS 14+">&nbsp;
-  <img src="https://img.shields.io/badge/Swift_6-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift 6">&nbsp;
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/akoenig/runway?style=flat-square&color=22863A" alt="MIT License"></a>
-</p>
-
-<p align="center">
-  <video src="demo.mp4" width="600" autoplay loop muted playsinline></video>
-</p>
+![Demo](demo.mp4)
 
 <br>
 
