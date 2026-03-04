@@ -374,8 +374,11 @@ func realWorldBuildLogExcerpt() {
     let result = GitHubService.parseLogLines(raw, steps: steps)
 
     // --- Set up job (step 1): lines before the first "Run" group ---
+    // Note: content lines *inside* sub-groups (e.g. "Hosted Compute Agent",
+    // "Version:", "macOS", etc.) are output by the parser — only the
+    // ##[group]/##[endgroup] marker lines themselves are suppressed.
     let setupLines = result.filter { $0.stepNumber == 1 }
-    #expect(setupLines.count == 6, "Expected 6 setup lines, got \(setupLines.count)")
+    #expect(setupLines.count == 12, "Expected 12 setup lines, got \(setupLines.count)")
     #expect(setupLines[0].content == "Current runner version: '2.331.0'")
     #expect(setupLines.contains { $0.content == "Secret source: Actions" })
     #expect(setupLines.contains { $0.content == "Complete job name: build" })
@@ -445,8 +448,10 @@ func realWorldReleaseLogExcerpt() {
     let result = GitHubService.parseLogLines(raw, steps: steps)
 
     // Setup lines (before first "Run")
+    // "Hosted Compute Agent" (inside Runner Image Provisioner group) is also
+    // included since only the ##[group]/##[endgroup] markers are suppressed.
     let setupLines = result.filter { $0.stepNumber == 1 }
-    #expect(setupLines.count == 3)
+    #expect(setupLines.count == 5)
     #expect(setupLines[0].content == "Current runner version: '2.331.0'")
     #expect(setupLines.contains { $0.content == "Complete job name: release" })
 
