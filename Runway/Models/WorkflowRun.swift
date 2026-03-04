@@ -1,4 +1,6 @@
+import AppKit
 import Foundation
+import SwiftUI
 
 enum WorkflowStatus: String, Codable {
     case idle
@@ -12,6 +14,26 @@ enum WorkflowStatus: String, Codable {
         case .running: return "Running"
         case .success: return "Success"
         case .failure: return "Failed"
+        }
+    }
+
+    /// SwiftUI color for status indicators throughout the app.
+    var color: Color {
+        switch self {
+        case .idle: .gray
+        case .running: .orange
+        case .success: .green
+        case .failure: .red
+        }
+    }
+
+    /// AppKit color for the menu bar status dot.
+    var nsColor: NSColor {
+        switch self {
+        case .idle: .systemGray
+        case .running: .systemOrange
+        case .success: .systemGreen
+        case .failure: .systemRed
         }
     }
 }

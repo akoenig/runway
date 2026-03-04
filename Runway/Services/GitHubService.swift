@@ -32,6 +32,39 @@ final class GitHubService: @unchecked Sendable {
     private let baseURL = "https://api.github.com"
     private let session: URLSession
 
+    /// Shared decoder configured for the GitHub API. Uses `convertFromSnakeCase`
+    /// and a custom ISO8601 date strategy that handles both fractional and
+    /// non-fractional second formats GitHub returns.
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        let withFractional = ISO8601DateFormatter()
+        withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let withoutFractional = ISO8601DateFormatter()
+        withoutFractional.formatOptions = [.withInternetDateTime]
+
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+
+            if let date = withFractional.date(from: dateString) {
+                return date
+            }
+            if let date = withoutFractional.date(from: dateString) {
+                return date
+            }
+
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid date: \(dateString)"
+            )
+        }
+
+        return decoder
+    }()
+
     private init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
@@ -57,9 +90,10 @@ final class GitHubService: @unchecked Sendable {
         return request
     }
 
-    func validateToken() async throws -> GitHubUser {
-        let request = try createRequest(path: "/user")
-
+    /// Performs a GitHub API request, validates the HTTP response, and decodes
+    /// the result into the requested type using the shared decoder.
+    private func fetch<T: Decodable>(_ type: T.Type, path: String) async throws -> T {
+        let request = try createRequest(path: path)
         let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -72,182 +106,44 @@ final class GitHubService: @unchecked Sendable {
         }
 
         do {
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            return try decoder.decode(GitHubUser.self, from: data)
+            return try Self.decoder.decode(type, from: data)
         } catch {
-            // Log the actual response for debugging
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("Failed to decode user response: \(jsonString)")
-            }
             throw GitHubAPIError.decodingError(error)
         }
+    }
+
+    func validateToken() async throws -> GitHubUser {
+        try await fetch(GitHubUser.self, path: "/user")
     }
 
     func fetchUserRepos(perPage: Int = 10) async throws -> [Repository] {
-        let request = try createRequest(path: "/user/repos?sort=updated&per_page=\(perPage)")
-
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw GitHubAPIError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let message = String(data: data, encoding: .utf8)
-            throw GitHubAPIError.httpError(statusCode: httpResponse.statusCode, message: message)
-        }
-
-        do {
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            return try decoder.decode([Repository].self, from: data)
-        } catch {
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("Failed to decode repos response: \(jsonString)")
-            }
-            throw GitHubAPIError.decodingError(error)
-        }
+        try await fetch([Repository].self, path: "/user/repos?sort=updated&per_page=\(perPage)")
     }
 
     func fetchWorkflowRuns(for repo: Repository, perPage: Int = 5) async throws -> [WorkflowRun] {
-        let ownerLogin = repo.owner?.login ?? "unknown"
-        let request = try createRequest(path: "/repos/\(ownerLogin)/\(repo.name)/actions/runs?per_page=\(perPage)")
-
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw GitHubAPIError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let message = String(data: data, encoding: .utf8)
-            throw GitHubAPIError.httpError(statusCode: httpResponse.statusCode, message: message)
-        }
-
-        do {
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            
-            // Handle ISO8601 dates with or without fractional seconds.
-            // Use two separate formatter instances to avoid mutation bugs —
-            // a single formatter whose formatOptions is changed inside the closure
-            // permanently loses the fractional-seconds capability after the first
-            // date string that lacks them.
-            let withFractional = ISO8601DateFormatter()
-            withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-            let withoutFractional = ISO8601DateFormatter()
-            withoutFractional.formatOptions = [.withInternetDateTime]
-
-            decoder.dateDecodingStrategy = .custom { decoder in
-                let container = try decoder.singleValueContainer()
-                let dateString = try container.decode(String.self)
-
-                if let date = withFractional.date(from: dateString) {
-                    return date
-                }
-
-                if let date = withoutFractional.date(from: dateString) {
-                    return date
-                }
-
-                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date: \(dateString)")
-            }
-            
-            let runsResponse = try decoder.decode(WorkflowRunsResponse.self, from: data)
-            return runsResponse.workflowRuns
-        } catch {
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("Failed to decode workflow runs response: \(jsonString)")
-            }
-            throw GitHubAPIError.decodingError(error)
-        }
+        let owner = repo.owner?.login ?? "unknown"
+        let response = try await fetch(
+            WorkflowRunsResponse.self,
+            path: "/repos/\(owner)/\(repo.name)/actions/runs?per_page=\(perPage)"
+        )
+        return response.workflowRuns
     }
 
     func fetchSingleWorkflowRun(runId: Int, repo: Repository) async throws -> WorkflowRun {
         let owner = repo.owner?.login ?? "unknown"
-        let request = try createRequest(
+        return try await fetch(
+            WorkflowRun.self,
             path: "/repos/\(owner)/\(repo.name)/actions/runs/\(runId)"
         )
-
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw GitHubAPIError.invalidResponse
-        }
-        guard httpResponse.statusCode == 200 else {
-            let message = String(data: data, encoding: .utf8)
-            throw GitHubAPIError.httpError(statusCode: httpResponse.statusCode, message: message)
-        }
-
-        do {
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-
-            let withFractional = ISO8601DateFormatter()
-            withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            let withoutFractional = ISO8601DateFormatter()
-            withoutFractional.formatOptions = [.withInternetDateTime]
-
-            decoder.dateDecodingStrategy = .custom { decoder in
-                let container = try decoder.singleValueContainer()
-                let dateString = try container.decode(String.self)
-                if let date = withFractional.date(from: dateString) { return date }
-                if let date = withoutFractional.date(from: dateString) { return date }
-                throw DecodingError.dataCorruptedError(
-                    in: container,
-                    debugDescription: "Invalid date: \(dateString)"
-                )
-            }
-
-            return try decoder.decode(WorkflowRun.self, from: data)
-        } catch {
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("Failed to decode workflow run response: \(jsonString)")
-            }
-            throw GitHubAPIError.decodingError(error)
-        }
     }
 
     func fetchJobs(runId: Int, repo: Repository) async throws -> [WorkflowJob] {
         let owner = repo.owner?.login ?? "unknown"
-        let request = try createRequest(
+        let response = try await fetch(
+            WorkflowJobsResponse.self,
             path: "/repos/\(owner)/\(repo.name)/actions/runs/\(runId)/jobs?per_page=100"
         )
-
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw GitHubAPIError.invalidResponse
-        }
-        guard httpResponse.statusCode == 200 else {
-            let message = String(data: data, encoding: .utf8)
-            throw GitHubAPIError.httpError(statusCode: httpResponse.statusCode, message: message)
-        }
-
-        do {
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            decoder.dateDecodingStrategy = .custom { decoder in
-                let container = try decoder.singleValueContainer()
-                let dateString = try container.decode(String.self)
-                let withFractional = ISO8601DateFormatter()
-                withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                let withoutFractional = ISO8601DateFormatter()
-                withoutFractional.formatOptions = [.withInternetDateTime]
-                if let date = withFractional.date(from: dateString) { return date }
-                if let date = withoutFractional.date(from: dateString) { return date }
-                throw DecodingError.dataCorruptedError(
-                    in: container,
-                    debugDescription: "Invalid date: \(dateString)"
-                )
-            }
-            let jobsResponse = try decoder.decode(WorkflowJobsResponse.self, from: data)
-            return jobsResponse.jobs
-        } catch {
-            throw GitHubAPIError.decodingError(error)
-        }
+        return response.jobs
     }
 
     func fetchJobLogs(jobId: Int, repo: Repository, steps: [WorkflowStep]) async throws -> [LogLine] {
@@ -368,28 +264,53 @@ final class GitHubService: @unchecked Sendable {
         name.hasPrefix("Post ")
     }
 
-    func fetchWorkflowRuns(forSelectedRepos selectedRepoNames: [String], maxRuns: Int = 10) async throws -> [WorkflowRun] {
-        // First, get user's repos
+    /// Cached list of user repos so the polling loop doesn't re-fetch them
+    /// on every cycle. Call `invalidateRepoCache()` to force a refresh.
+    private var cachedRepos: [Repository]?
+
+    func invalidateRepoCache() {
+        cachedRepos = nil
+    }
+
+    /// Returns cached repos or fetches them if the cache is empty.
+    private func resolveRepos() async throws -> [Repository] {
+        if let cached = cachedRepos {
+            return cached
+        }
         let repos = try await fetchUserRepos(perPage: 100)
-        
+        cachedRepos = repos
+        return repos
+    }
+
+    func fetchWorkflowRuns(forSelectedRepos selectedRepoNames: [String], maxRuns: Int = 10) async throws -> [WorkflowRun] {
+        let repos = try await resolveRepos()
+
         // Filter to only selected repos
         let selectedRepos = repos.filter { selectedRepoNames.contains($0.displayFullName) }
-        
-        // Then fetch workflow runs for each selected repo
-        var allRuns: [WorkflowRun] = []
-        
-        for repo in selectedRepos {
-            do {
-                let runs = try await fetchWorkflowRuns(for: repo, perPage: 3)
-                allRuns.append(contentsOf: runs)
-            } catch {
-                // Skip repos that don't have workflows
-                continue
+
+        // Fetch workflow runs concurrently across all selected repos
+        let allRuns = try await withThrowingTaskGroup(of: [WorkflowRun].self) { group in
+            for repo in selectedRepos {
+                group.addTask {
+                    do {
+                        return try await self.fetchWorkflowRuns(for: repo, perPage: 3)
+                    } catch {
+                        // Skip repos that don't have workflows
+                        return []
+                    }
+                }
             }
+
+            var collected: [WorkflowRun] = []
+            for try await runs in group {
+                collected.append(contentsOf: runs)
+            }
+            return collected
         }
-        
+
         // Sort by created date (newest first) and limit
-        allRuns.sort { $0.createdAt > $1.createdAt }
-        return Array(allRuns.prefix(maxRuns))
+        return allRuns.sorted { $0.createdAt > $1.createdAt }
+            .prefix(maxRuns)
+            .map { $0 }
     }
 }

@@ -2,19 +2,16 @@ import SwiftUI
 
 struct WorkflowRowView: View {
     let workflow: WorkflowRun
-    /// Called for running/success rows — opens the run URL in the browser.
-    let onTap: () -> Void
-    /// Called for failed rows — shows the in-app detail view.
     let onDetail: () -> Void
 
     @State private var isHovered: Bool = false
 
     var body: some View {
-        Button(action: handleTap) {
+        Button(action: onDetail) {
             HStack(spacing: 10) {
                 // Status dot
                 Circle()
-                    .fill(statusColor)
+                    .fill(workflow.workflowStatus.color)
                     .frame(width: 8, height: 8)
 
                 // Workflow info
@@ -61,19 +58,6 @@ struct WorkflowRowView: View {
             withAnimation(.easeInOut(duration: 0.12)) {
                 isHovered = hovering
             }
-        }
-    }
-
-    private func handleTap() {
-        onDetail()
-    }
-
-    private var statusColor: Color {
-        switch workflow.workflowStatus {
-        case .running: return .orange
-        case .success: return .green
-        case .failure: return .red
-        case .idle: return .gray
         }
     }
 

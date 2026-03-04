@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 struct MenuBarView: View {
-    @ObservedObject var viewModel: AppViewModel
+    var viewModel: AppViewModel
     @State private var showSettings: Bool = false
     @State private var selectedWorkflow: WorkflowRun?
 
@@ -66,11 +66,6 @@ struct MenuBarView: View {
                         ForEach(runningWorkflows) { workflow in
                             WorkflowRowView(
                                 workflow: workflow,
-                                onTap: {
-                                    if let url = URL(string: workflow.htmlUrl) {
-                                        NSWorkspace.shared.open(url)
-                                    }
-                                },
                                 onDetail: { selectedWorkflow = workflow }
                             )
                         }
@@ -85,11 +80,6 @@ struct MenuBarView: View {
                         ForEach(recentWorkflows) { workflow in
                             WorkflowRowView(
                                 workflow: workflow,
-                                onTap: {
-                                    if let url = URL(string: workflow.htmlUrl) {
-                                        NSWorkspace.shared.open(url)
-                                    }
-                                },
                                 onDetail: { selectedWorkflow = workflow }
                             )
                         }
@@ -159,7 +149,7 @@ struct MenuBarView: View {
             // Status
             HStack(spacing: 5) {
                 Circle()
-                    .fill(statusColor)
+                    .fill(viewModel.overallStatus.color)
                     .frame(width: 6, height: 6)
 
                 Text(viewModel.statusText)
@@ -222,86 +212,22 @@ struct MenuBarView: View {
     }
 
     private var loadingView: some View {
-        VStack(spacing: 8) {
-            Spacer()
-
-            ProgressView()
-                .scaleEffect(0.8)
-                .tint(.secondary)
-
-            Text("Loading workflows...")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
-
-            Spacer()
-        }
+        LoadingStateView(message: "Loading workflows...")
     }
 
     private func errorView(message: String) -> some View {
-        VStack(spacing: 12) {
-            Spacer()
-
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 28, weight: .light))
-                .foregroundStyle(.orange)
-
-            VStack(spacing: 4) {
-                Text("Something went wrong")
-                    .font(.system(size: 13, weight: .semibold))
-
-                Text(message)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-            }
-
-            Button {
-                Task {
-                    await viewModel.fetchWorkflowRuns()
-                }
-            } label: {
-                Text("Retry")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-            }
-            .buttonStyle(.plain)
-
-            Spacer()
+        ErrorStateView(message: message) {
+            Task { await viewModel.fetchWorkflowRuns() }
         }
-        .padding(.horizontal, 20)
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 8) {
-            Spacer()
-
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 28, weight: .light))
-                .foregroundStyle(.green)
-
-            VStack(spacing: 4) {
-                Text("All clear")
-                    .font(.system(size: 14, weight: .semibold))
-
-                Text("No active workflow runs")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.tertiary)
-            }
-
-            Spacer()
-        }
-    }
-
-    // MARK: - Helpers
-
-    private var statusColor: Color {
-        switch viewModel.overallStatus {
-        case .idle: return .gray
-        case .running: return .orange
-        case .success: return .green
-        case .failure: return .red
-        }
+        EmptyStateView(
+            icon: "checkmark.circle",
+            iconColor: .green,
+            title: "All clear",
+            subtitle: "No active workflow runs"
+        )
     }
 }
 

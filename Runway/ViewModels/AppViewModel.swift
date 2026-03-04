@@ -1,30 +1,40 @@
 import Foundation
 import AppKit
-import Combine
 
+// MARK: - UserDefaults Keys
+
+private enum DefaultsKey {
+    static let pollingInterval = "pollingInterval"
+    static let selectedRepos = "selectedRepos"
+    static let shortcutKeyCode = "shortcutKeyCode"
+    static let shortcutModifiers = "shortcutModifiers"
+    static let shortcutKeyChar = "shortcutKeyChar"
+}
+
+@Observable
 @MainActor
-final class AppViewModel: ObservableObject {
-    @Published var workflows: [WorkflowRun] = []
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
-    @Published var githubUser: GitHubUser?
-    @Published var isAuthenticated: Bool = false
-    @Published var pollingInterval: Int = 30 {
+final class AppViewModel {
+    var workflows: [WorkflowRun] = []
+    var isLoading: Bool = false
+    var errorMessage: String?
+    var githubUser: GitHubUser?
+    var isAuthenticated: Bool = false
+    var pollingInterval: Int = 30 {
         didSet {
-            UserDefaults.standard.set(pollingInterval, forKey: "pollingInterval")
+            UserDefaults.standard.set(pollingInterval, forKey: DefaultsKey.pollingInterval)
             restartPolling()
         }
     }
-    @Published var selectedRepos: [String] = [] {
+    var selectedRepos: [String] = [] {
         didSet {
-            UserDefaults.standard.set(selectedRepos, forKey: "selectedRepos")
+            UserDefaults.standard.set(selectedRepos, forKey: DefaultsKey.selectedRepos)
         }
     }
-    @Published var availableRepos: [Repository] = []
+    var availableRepos: [Repository] = []
 
-    @Published var shortcutKeyCode: Int = -1
-    @Published var shortcutModifiers: Int = 0
-    @Published var shortcutKeyChar: String = ""
+    var shortcutKeyCode: Int = -1
+    var shortcutModifiers: Int = 0
+    var shortcutKeyChar: String = ""
 
     var onWorkflowCompleted: ((WorkflowRun) -> Void)?
     var onShortcutChanged: (() -> Void)?
@@ -38,6 +48,9 @@ final class AppViewModel: ObservableObject {
 
     /// Tracks the in-flight user validation so startMonitoring() can await it.
     private var userValidationTask: Task<Void, Never>?
+
+    /// Number of consecutive polling failures. Used for exponential backoff.
+    private var consecutiveFailures: Int = 0
 
     /// Workflows updated within the last 10 minutes are considered "recent"
     /// and contribute to the overall status. Older workflows are ignored so
@@ -83,18 +96,18 @@ final class AppViewModel: ObservableObject {
     }
 
     init() {
-        let stored = UserDefaults.standard.integer(forKey: "pollingInterval")
+        let stored = UserDefaults.standard.integer(forKey: DefaultsKey.pollingInterval)
         if stored > 0 {
             pollingInterval = stored
         }
 
-        if let repos = UserDefaults.standard.array(forKey: "selectedRepos") as? [String] {
+        if let repos = UserDefaults.standard.array(forKey: DefaultsKey.selectedRepos) as? [String] {
             selectedRepos = repos
         }
 
-        shortcutKeyCode = UserDefaults.standard.object(forKey: "shortcutKeyCode") as? Int ?? -1
-        shortcutModifiers = UserDefaults.standard.integer(forKey: "shortcutModifiers")
-        shortcutKeyChar = UserDefaults.standard.string(forKey: "shortcutKeyChar") ?? ""
+        shortcutKeyCode = UserDefaults.standard.object(forKey: DefaultsKey.shortcutKeyCode) as? Int ?? -1
+        shortcutModifiers = UserDefaults.standard.integer(forKey: DefaultsKey.shortcutModifiers)
+        shortcutKeyChar = UserDefaults.standard.string(forKey: DefaultsKey.shortcutKeyChar) ?? ""
 
         loadSavedSettings()
     }
@@ -115,10 +128,37 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    func saveSettings() {
-        UserDefaults.standard.set(pollingInterval, forKey: "pollingInterval")
-        UserDefaults.standard.set(selectedRepos, forKey: "selectedRepos")
+    // MARK: - Authentication
+
+    /// Connects to GitHub by saving the token and validating it.
+    func connect(token: String) async throws {
+        try KeychainService.shared.saveToken(token)
+        let user = try await GitHubService.shared.validateToken()
+
+        githubUser = user
+        isAuthenticated = true
+        saveSettings()
+
+        await startMonitoring()
     }
+
+    /// Disconnects from GitHub by removing the token and clearing all state.
+    func disconnect() {
+        try? KeychainService.shared.deleteToken()
+        isAuthenticated = false
+        githubUser = nil
+        workflows = []
+        selectedRepos = []
+        availableRepos = []
+        stopMonitoring()
+    }
+
+    func saveSettings() {
+        UserDefaults.standard.set(pollingInterval, forKey: DefaultsKey.pollingInterval)
+        UserDefaults.standard.set(selectedRepos, forKey: DefaultsKey.selectedRepos)
+    }
+
+    // MARK: - Monitoring
 
     func startMonitoring() async {
         // Wait for any in-flight user validation to finish first.
@@ -151,7 +191,10 @@ final class AppViewModel: ObservableObject {
         monitoringTask = Task {
             while !Task.isCancelled {
                 // Sleep first — the initial fetch already happened in startMonitoring().
-                try? await Task.sleep(nanoseconds: UInt64(pollingInterval) * 1_000_000_000)
+                // Apply exponential backoff on consecutive failures (max 5 min).
+                let backoff = min(consecutiveFailures * consecutiveFailures * 5, 300)
+                let sleepSeconds = UInt64(pollingInterval + backoff)
+                try? await Task.sleep(nanoseconds: sleepSeconds * 1_000_000_000)
                 guard !Task.isCancelled else { break }
                 await fetchWorkflowRuns()
             }
@@ -169,6 +212,10 @@ final class AppViewModel: ObservableObject {
         errorMessage = nil
 
         do {
+            // Invalidate the cached repo list so the next poll also picks up
+            // any newly added/removed repositories.
+            GitHubService.shared.invalidateRepoCache()
+
             let repos = try await GitHubService.shared.fetchUserRepos(perPage: 100)
             availableRepos = repos.sorted { $0.displayFullName < $1.displayFullName }
 
@@ -214,9 +261,11 @@ final class AppViewModel: ObservableObject {
 
             self.workflows = runs
             self.isLoading = false
+            self.consecutiveFailures = 0
         } catch {
             self.errorMessage = error.localizedDescription
             self.isLoading = false
+            self.consecutiveFailures += 1
         }
     }
 
@@ -226,9 +275,9 @@ final class AppViewModel: ObservableObject {
         shortcutKeyCode = keyCode
         shortcutModifiers = modifiers
         shortcutKeyChar = keyChar
-        UserDefaults.standard.set(keyCode, forKey: "shortcutKeyCode")
-        UserDefaults.standard.set(modifiers, forKey: "shortcutModifiers")
-        UserDefaults.standard.set(keyChar, forKey: "shortcutKeyChar")
+        UserDefaults.standard.set(keyCode, forKey: DefaultsKey.shortcutKeyCode)
+        UserDefaults.standard.set(modifiers, forKey: DefaultsKey.shortcutModifiers)
+        UserDefaults.standard.set(keyChar, forKey: DefaultsKey.shortcutKeyChar)
         onShortcutChanged?()
     }
 
@@ -247,5 +296,4 @@ final class AppViewModel: ObservableObject {
         s += shortcutKeyChar
         return s
     }
-
 }

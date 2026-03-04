@@ -91,44 +91,15 @@ struct JobLogView: View {
     }
 
     private var loadingView: some View {
-        VStack(spacing: 8) {
-            Spacer()
-            ProgressView().scaleEffect(0.8).tint(.secondary)
-            Text("Loading log...")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
-            Spacer()
-        }
+        LoadingStateView(message: "Loading log...")
     }
 
     private func errorView(message: String) -> some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 28, weight: .light))
-                .foregroundStyle(.orange)
-            VStack(spacing: 4) {
-                Text("Couldn't load log")
-                    .font(.system(size: 13, weight: .semibold))
-                Text(message)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(3)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 20)
+        ErrorStateView(title: "Couldn't load log", message: message)
     }
 
     private var emptyView: some View {
-        VStack(spacing: 8) {
-            Spacer()
-            Text("No log output for this step")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
-            Spacer()
-        }
+        EmptyStateView(icon: "doc.text", title: "No log output for this step")
     }
 
     private var logScrollView: some View {

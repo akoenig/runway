@@ -1,5 +1,16 @@
 import Foundation
 
+// MARK: - Shared Duration Formatting
+
+extension TimeInterval {
+    /// Formats a duration in a compact human-readable style: `<1s`, `42s`, `3m 12s`.
+    var formattedDuration: String {
+        if self < 1 { return "<1s" }
+        if self < 60 { return "\(Int(self))s" }
+        return "\(Int(self / 60))m \(Int(truncatingRemainder(dividingBy: 60)))s"
+    }
+}
+
 struct LogLine: Identifiable {
     let id = UUID()
     let content: String
@@ -41,10 +52,7 @@ struct WorkflowStep: Codable, Identifiable {
 
     var formattedDuration: String? {
         guard let start = startedAt, let end = completedAt else { return nil }
-        let d = end.timeIntervalSince(start)
-        if d < 1 { return "<1s" }
-        if d < 60 { return "\(Int(d))s" }
-        return "\(Int(d / 60))m \(Int(d.truncatingRemainder(dividingBy: 60)))s"
+        return end.timeIntervalSince(start).formattedDuration
     }
 }
 
@@ -76,10 +84,7 @@ struct WorkflowJob: Codable, Identifiable {
     func elapsedSince(_ now: Date) -> String? {
         guard let start = startedAt else { return nil }
         let end = completedAt ?? now
-        let d = end.timeIntervalSince(start)
-        if d < 1 { return "<1s" }
-        if d < 60 { return "\(Int(d))s" }
-        return "\(Int(d / 60))m \(Int(d.truncatingRemainder(dividingBy: 60)))s"
+        return end.timeIntervalSince(start).formattedDuration
     }
 
     /// Duration in seconds, nil if not yet complete.
@@ -89,9 +94,7 @@ struct WorkflowJob: Codable, Identifiable {
     }
 
     var formattedDuration: String? {
-        guard let d = duration else { return nil }
-        if d < 60 { return "\(Int(d))s" }
-        return "\(Int(d / 60))m \(Int(d.truncatingRemainder(dividingBy: 60)))s"
+        duration?.formattedDuration
     }
 }
 

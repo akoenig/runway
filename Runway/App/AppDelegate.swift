@@ -1,6 +1,5 @@
 import AppKit
 import Carbon
-import Combine
 import SwiftUI
 import UserNotifications
 
@@ -27,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var eventMonitor: Any?
     private var hotkeyRef: EventHotKeyRef?
     private var hotkeyHandler: EventHandlerRef?
-    private var cancellables = Set<AnyCancellable>()
+    private var statusObservationTask: Task<Void, Never>?
     private var pulseTimer: Timer?
     private var pulsingUp: Bool = false
 
@@ -51,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         viewModel.stopMonitoring()
+        statusObservationTask?.cancel()
         stopPulse()
         removeEventMonitor()
         unregisterHotkey()
@@ -78,21 +78,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover?.contentViewController = hostingController
     }
 
-    /// Observe workflow changes via Combine to reactively update the menu bar dot.
-    /// This replaces the manual updateStatusIcon() calls in the view model and
-    /// ensures the dot always reflects the current state.
+    /// Observe workflow changes via the Observation framework to reactively
+    /// update the menu bar dot whenever status-relevant properties change.
     private func setupStatusIconObserver() {
-        viewModel.$workflows
-            .combineLatest(viewModel.$isAuthenticated)
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _, _ in
-                guard let self = self else { return }
-                self.updateStatusIcon(
-                    status: self.viewModel.overallStatus,
-                    count: self.viewModel.activeWorkflowCount
-                )
+        statusObservationTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+
+                // withObservationTracking registers which @Observable
+                // properties are accessed and calls onChange when any of
+                // them mutate. We re-register after each change.
+                let (status, count) = withObservationTracking {
+                    (self.viewModel.overallStatus, self.viewModel.activeWorkflowCount)
+                } onChange: {
+                    // Intentionally empty — the next loop iteration
+                    // re-reads the values and re-registers.
+                }
+
+                self.updateStatusIcon(status: status, count: count)
+
+                // Yield to let the onChange callback fire before re-entering.
+                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms debounce
             }
-            .store(in: &cancellables)
+        }
     }
 
     private func setupNotifications() {
@@ -214,18 +222,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateStatusIcon(status: WorkflowStatus, count: Int) {
         guard let button = statusItem?.button else { return }
 
-        let color: NSColor = switch status {
-        case .idle:
-            .systemGray
-        case .running:
-            .systemOrange
-        case .success:
-            .systemGreen
-        case .failure:
-            .systemRed
-        }
-
-        button.image = makeStatusDot(color: color)
+        button.image = makeStatusDot(color: status.nsColor)
 
         if count > 0 {
             button.title = " \(count)"
