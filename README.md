@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <video src="https://github.com/akoenig/runway/raw/main/demo.mp4" width="600" autoplay loop muted playsinline></video>
+  <video src="demo.mp4" width="600" autoplay loop muted playsinline></video>
 </p>
 
 <br>
@@ -32,21 +32,14 @@ Switching to a browser tab to check if your CI passed is a small interruption - 
 
 ## Features
 
-**Live status at a glance** - A color-coded menu bar indicator shows overall workflow health. Orange means running, green means passed, red means failed.
-
-**Detailed drill-down** - Click through from workflow to job to individual step. See exactly what failed and why, without opening GitHub.
-
-**Built-in log viewer** - Read parsed, syntax-highlighted job logs directly in the app. Errors are called out in red, warnings in orange.
-
-**Native notifications** - Get alerted the moment a workflow completes or fails. Click the notification to jump straight to it.
-
-**Repository picker** - Choose which repositories to monitor. Search, select all, or fine-tune - it is your call.
-
-**Global keyboard shortcut** - Toggle the Runway popover from anywhere with a configurable hotkey.
-
-**Secure by default** - Your GitHub token is stored in the macOS Keychain. The app is fully sandboxed and only makes read-only API calls.
-
-**Launch at login** - One toggle and Runway starts with your Mac, quietly waiting in the menu bar.
+- **Live status at a glance** - A color-coded menu bar indicator shows overall workflow health. Orange means running, green means passed, red means failed.
+- **Detailed drill-down** - Click through from workflow to job to individual step. See exactly what failed and why, without opening GitHub.
+- **Built-in log viewer** - Read parsed, syntax-highlighted job logs directly in the app. Errors are called out in red, warnings in orange.
+- **Native notifications** - Get alerted the moment a workflow completes or fails. Click the notification to jump straight to it.
+- **Repository picker** - Choose which repositories to monitor. Search, select all, or fine-tune - it is your call.
+- **Global keyboard shortcut** - Toggle the Runway popover from anywhere with a configurable hotkey.
+- **Secure by default** - Your GitHub token is stored in the macOS Keychain. The app is fully sandboxed and only makes read-only API calls.
+- **Launch at login** - One toggle and Runway starts with your Mac, quietly waiting in the menu bar.
 
 <br>
 
@@ -122,4 +115,4 @@ Contributions are welcome. Fork the repo, create a branch, and open a pull reque
 
 ## License
 
-[MIT](LICENSE) &copy; [Andre Koenig](https://github.com/akoenig)
+[MIT](LICENSE) &copy; [André König](https://github.com/akoenig)
