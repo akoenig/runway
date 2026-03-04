@@ -170,12 +170,6 @@ final class AppViewModel {
 
         guard isAuthenticated, githubUser != nil else { return }
 
-        // Auto-select all repos on first launch so the user immediately
-        // sees workflows without having to configure anything.
-        if selectedRepos.isEmpty {
-            await fetchAvailableRepos()
-        }
-
         await fetchWorkflowRuns()
         startPolling()
     }
@@ -218,12 +212,6 @@ final class AppViewModel {
 
             let repos = try await GitHubService.shared.fetchUserRepos(perPage: 100)
             availableRepos = repos.sorted { $0.displayFullName < $1.displayFullName }
-
-            // If no repos selected yet, select all by default (frictionless)
-            if selectedRepos.isEmpty {
-                selectedRepos = repos.map { $0.displayFullName }
-            }
-
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription

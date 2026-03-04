@@ -36,6 +36,8 @@ struct MenuBarView: View {
     private var contentSection: some View {
         if !viewModel.isAuthenticated {
             notAuthenticatedView
+        } else if viewModel.selectedRepos.isEmpty {
+            noReposSelectedView
         } else if viewModel.isLoading && viewModel.workflows.isEmpty {
             loadingView
         } else if let error = viewModel.errorMessage, viewModel.workflows.isEmpty {
@@ -209,6 +211,42 @@ struct MenuBarView: View {
 
             Spacer()
         }
+    }
+
+    private var noReposSelectedView: some View {
+        VStack(spacing: 12) {
+            Spacer()
+
+            Image(systemName: "folder.badge.gearshape")
+                .font(.system(size: 28, weight: .light))
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 4) {
+                Text("No repositories selected")
+                    .font(.system(size: 14, weight: .semibold))
+
+                Text("Choose which repositories to monitor in settings")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+            }
+
+            Button {
+                showSettings = true
+            } label: {
+                Text("Open Settings")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 7)
+                    .background(Color.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 7))
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+        }
+        .padding(.horizontal, 20)
     }
 
     private var loadingView: some View {
