@@ -3,7 +3,7 @@ import Foundation
 import UserNotifications
 
 @MainActor
-final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
+final class NotificationService: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
     private let center = UNUserNotificationCenter.current()
 
     override init() {
