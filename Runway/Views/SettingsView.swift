@@ -39,7 +39,7 @@ struct SettingsView: View {
 
     private var connectionSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(title: "GitHub")
+            sectionHeader(title: "GitHub", description: "Connect your account to start monitoring CI workflows.")
 
             if viewModel.isAuthenticated {
                 connectedRow
@@ -180,7 +180,7 @@ struct SettingsView: View {
 
     private var reposSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(title: "Repositories")
+            sectionHeader(title: "Repositories", description: "Choose which repositories Runway watches for workflow runs.")
 
             Button {
                 viewModel.errorMessage = nil
@@ -228,7 +228,7 @@ struct SettingsView: View {
 
     private var pollingSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(title: "Update Frequency")
+            sectionHeader(title: "Update Frequency", description: "How often Runway polls GitHub for new workflow results.")
 
             HStack(spacing: 4) {
                 ForEach([15, 30, 60, 120], id: \.self) { interval in
@@ -257,7 +257,7 @@ struct SettingsView: View {
 
     private var shortcutSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(title: "Keyboard Shortcut")
+            sectionHeader(title: "Keyboard Shortcut", description: "Open Runway from anywhere on your Mac with a global hotkey.")
 
             HStack {
                 if shortcutRecorder.isRecording {
@@ -336,7 +336,7 @@ struct SettingsView: View {
 
     private var loginItemSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(title: "General")
+            sectionHeader(title: "General", description: "System-level preferences for how Runway behaves on startup.")
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -413,8 +413,17 @@ struct SettingsView: View {
 
             Spacer()
 
-            // Invisible spacer to balance the back button
-            Color.clear.frame(width: 28, height: 28)
+            Button {
+                NSWorkspace.shared.open(URL(string: "https://github.com/anomalyco/Runway")!)
+            } label: {
+                Image(systemName: "arrow.up.right.square")
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(.quaternary)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("View on GitHub")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -422,13 +431,21 @@ struct SettingsView: View {
 
     // MARK: - Shared Components
 
-    private func sectionHeader(title: String) -> some View {
-        Text(title)
-            .font(.system(size: 15, weight: .bold))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 6)
+    private func sectionHeader(title: String, description: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.primary)
+
+            if let description {
+                Text(description)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 6)
     }
 
     // MARK: - Helpers
