@@ -33,3 +33,20 @@ targets:
           - "@executable_path/../Frameworks"
     entitlements:
       path: Runway/Runway.entitlements
+
+  RunwayTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: RunwayTests
+        excludes:
+          - "**/.DS_Store"
+    dependencies:
+      - target: Runway
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.andrekoenig.runway.tests
+        PRODUCT_NAME: RunwayTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Runway.app/Contents/MacOS/Runway"
+        BUNDLE_LOADER: "$(TEST_HOST)"

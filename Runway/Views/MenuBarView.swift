@@ -131,10 +131,15 @@ struct MenuBarView: View {
 
     // MARK: - Footer Bar
 
+    @State private var spinDegrees: Double = 0
+
     private var footerBar: some View {
         HStack(spacing: 0) {
             // Refresh button
             Button {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    spinDegrees += 360
+                }
                 Task {
                     await viewModel.fetchWorkflowRuns()
                 }
@@ -142,6 +147,7 @@ struct MenuBarView: View {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(viewModel.isLoading ? .quaternary : .secondary)
+                    .rotationEffect(.degrees(spinDegrees))
                     .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
             }
