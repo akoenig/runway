@@ -285,7 +285,7 @@ final class GitHubService: @unchecked Sendable {
         let ansiRegex = try? NSRegularExpression(pattern: ansiPattern)
 
         var lines: [LogLine] = []
-        var currentStep = 1
+        var currentStep = 0
 
         for rawLine in raw.components(separatedBy: "\n") {
             var line = rawLine
