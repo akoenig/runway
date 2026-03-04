@@ -273,18 +273,30 @@ final class GitHubService: @unchecked Sendable {
 
     /// Parse raw GitHub Actions log text into structured `LogLine` values.
     ///
-    /// GitHub Actions steps (like `actions/checkout`) can emit multiple
-    /// `##[group]` markers internally for sub-sections. Simply counting
-    /// groups would mis-assign lines to the wrong step. Instead, we match
-    /// each `##[group]` header against the known API step names. Only a
-    /// matching header advances the step pointer; inner sub-groups are
-    /// treated as part of the current step.
+    /// The raw log uses `##[group]` markers for both top-level step
+    /// boundaries and inner sub-sections within actions. The YAML step
+    /// `name:` is **not** used in the log — instead, top-level groups
+    /// always start with `"Run "` followed by the command or action ref.
+    /// Inner sub-groups (e.g. "Getting Git version info" from
+    /// actions/checkout) never start with `"Run "`.
+    ///
+    /// Strategy: map `"Run …"` groups sequentially to user-facing API
+    /// steps (excluding internal steps like "Set up job", "Post …", and
+    /// "Complete job"). Non-`"Run "` groups are treated as sub-sections
+    /// of the current step.
     static func parseLogLines(_ raw: String, steps: [WorkflowStep]) -> [LogLine] {
-        // Build lookup: step name → step number.
-        let stepNameToNumber: [String: Int] = Dictionary(
-            steps.map { ($0.name, $0.number) },
-            uniquingKeysWith: { first, _ in first }
-        )
+        // User-facing steps sorted by number. Internal runner steps
+        // ("Set up job", "Post …", "Complete job") don't have "Run …"
+        // groups in the log, so we exclude them from the sequential map.
+        let userSteps = steps
+            .filter { !isInternalStepName($0.name) }
+            .sorted { $0.number < $1.number }
+        var userStepIndex = 0
+
+        // Assign pre-"Run …" log lines (runner info, etc.) to "Set up job"
+        // if it exists, so clicking that step still shows content.
+        let setupStepNumber = steps.first { $0.name == "Set up job" }?.number ?? 0
+        var currentStep = setupStepNumber
 
         // Regex to strip the leading ISO8601 timestamp: "2024-01-15T10:23:45.1234567Z "
         let timestampPattern = #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z "#
@@ -295,7 +307,6 @@ final class GitHubService: @unchecked Sendable {
         let ansiRegex = try? NSRegularExpression(pattern: ansiPattern)
 
         var lines: [LogLine] = []
-        var currentStep = 0
 
         for rawLine in raw.components(separatedBy: "\n") {
             var line = rawLine
@@ -312,15 +323,19 @@ final class GitHubService: @unchecked Sendable {
                 line = regex.stringByReplacingMatches(in: line, range: range, withTemplate: "")
             }
 
-            // Check if this is a ##[group] marker.
             if line.hasPrefix("##[group]") {
                 let groupName = String(line.dropFirst("##[group]".count))
-                // Only advance step pointer when the group name matches
-                // a known API step. Inner sub-groups (e.g. from
-                // actions/checkout) are silently absorbed by the current step.
-                if let stepNumber = stepNameToNumber[groupName] {
-                    currentStep = stepNumber
+
+                if groupName.hasPrefix("Run ") {
+                    // Top-level step group — map to the next user step.
+                    if userStepIndex < userSteps.count {
+                        currentStep = userSteps[userStepIndex].number
+                        userStepIndex += 1
+                    }
                 }
+                // Non-"Run " groups are inner sub-sections (e.g.
+                // "Getting Git version info") or setup metadata
+                // ("Runner Image Provisioner") — keep currentStep.
                 continue
             }
 
@@ -343,6 +358,14 @@ final class GitHubService: @unchecked Sendable {
         }
 
         return lines
+    }
+
+    /// Internal runner steps that don't have corresponding "Run …" groups
+    /// in the raw log. These are managed by the Actions runner itself.
+    private static func isInternalStepName(_ name: String) -> Bool {
+        name == "Set up job" ||
+        name == "Complete job" ||
+        name.hasPrefix("Post ")
     }
 
     func fetchWorkflowRuns(forSelectedRepos selectedRepoNames: [String], maxRuns: Int = 10) async throws -> [WorkflowRun] {
