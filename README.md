@@ -16,6 +16,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/akoenig/runway?style=flat-square&color=22863A" alt="MIT License"></a>
 </p>
 
+<p align="center">
+  <video src="https://github.com/akoenig/runway/raw/main/demo.mp4" width="600" autoplay loop muted playsinline></video>
+</p>
+
 <br>
 
 ## Why Runway?
