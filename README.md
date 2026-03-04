@@ -1,140 +1,121 @@
-# Runway
+<p align="center">
+  <img src="runway.png" width="128" height="128" alt="Runway">
+</p>
 
-A native macOS menu bar app that monitors your GitHub Actions workflows. Track the status of your workflows directly from the menu bar with beautiful color-coded indicators and native notifications.
+<h1 align="center">Runway</h1>
 
-![Platform](https://img.shields.io/badge/platform-macOS%2014+-blue)
-![Swift](https://img.shields.io/badge/Swift-5.9-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+<p align="center">
+  <strong>GitHub Actions monitoring for your menu bar.</strong><br>
+  Know the moment your workflows pass or fail &mdash; without leaving your editor.
+</p>
+
+<p align="center">
+  <a href="https://github.com/akoenig/runway/releases/latest"><img src="https://img.shields.io/github/v/release/akoenig/runway?label=Download&color=007AFF&style=flat-square" alt="Download"></a>&nbsp;
+  <img src="https://img.shields.io/badge/macOS_14+-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS 14+">&nbsp;
+  <img src="https://img.shields.io/badge/Swift_6-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift 6">&nbsp;
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/akoenig/runway?style=flat-square&color=22863A" alt="MIT License"></a>
+</p>
+
+<br>
+
+## Why Runway?
+
+Switching to a browser tab to check if your CI passed is a small interruption &mdash; but it adds up. Runway puts a live status indicator in your menu bar so you always know where things stand. A green dot means you can ship. A red dot means you can fix it now, not five minutes from now.
+
+**One icon. Zero context switches.**
+
+<br>
 
 ## Features
 
-- **Menu Bar Integration** - Minimal, non-intrusive indicator in your menu bar
-- **Color-Coded Status** - Instantly see workflow status at a glance
-  - 🟠 Orange: Running
-  - 🔴 Red: Failed
-  - 🟢 Green: Succeeded
-  - ⚪ Gray: Idle
-- **Native Notifications** - Get notified when workflows complete (success or failure)
-- **One-Click Access** - Click any workflow to open it in GitHub
-- **Frictionless Setup** - Just enter your GitHub PAT, everything else is automatic
+**Live status at a glance** &mdash; A color-coded menu bar indicator shows overall workflow health. Orange means running, green means passed, red means failed.
 
-## Requirements
+**Detailed drill-down** &mdash; Click through from workflow to job to individual step. See exactly what failed and why, without opening GitHub.
 
-- macOS 14.0 or later
-- A GitHub account
-- A GitHub Personal Access Token (PAT)
+**Built-in log viewer** &mdash; Read parsed, syntax-highlighted job logs directly in the app. Errors are called out in red, warnings in orange.
 
-## Installation
+**Native notifications** &mdash; Get alerted the moment a workflow completes or fails. Click the notification to jump straight to it.
 
-### From Source
+**Repository picker** &mdash; Choose which repositories to monitor. Search, select all, or fine-tune &mdash; it is your call.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/akoenig/runway.git
-   cd runway
-   ```
+**Global keyboard shortcut** &mdash; Toggle the Runway popover from anywhere with a configurable hotkey.
 
-2. Generate the Xcode project:
-   ```bash
-   xcodegen generate
-   ```
+**Secure by default** &mdash; Your GitHub token is stored in the macOS Keychain. The app is fully sandboxed and only makes read-only API calls.
 
-3. Open in Xcode:
-   ```bash
-   open Runway.xcodeproj
-   ```
+**Launch at login** &mdash; One toggle and Runway starts with your Mac, quietly waiting in the menu bar.
 
-4. Build and run (Cmd+R)
+<br>
 
-## Setting Up GitHub Personal Access Token
+## Install
 
-To use Runway, you need a GitHub Personal Access Token (PAT) with the following scopes:
+### Download
 
-### Required Scopes
+Grab the latest `.dmg` from [GitHub Releases](https://github.com/akoenig/runway/releases/latest), mount it, and drag Runway to your Applications folder.
 
-1. **`repo`** - Full control of repositories
-   - Required to access workflow runs
-2. **`workflow`** - Update GitHub Actions workflows
-   - Required to read workflow run data
+### Build from source
 
-### Creating a PAT
+```bash
+git clone https://github.com/akoenig/runway.git
+cd runway
+xcodegen generate
+open Runway.xcodeproj
+```
 
-1. Go to [GitHub Settings → Personal access tokens → Tokens (classic)](https://github.com/settings/tokens)
-2. Click "Generate new token (classic)"
-3. Give it a descriptive name (e.g., "Runway macOS App")
-4. Select the following scopes:
-   - ☑️ `repo` (Full control of private repositories)
-   - ☑️ `workflow` (Update GitHub Action workflows)
-5. Click "Generate token"
-6. **Important**: Copy the token immediately - you won't be able to see it again!
+Then hit **Cmd+R** in Xcode.
 
-### Security Note
+> Requires Xcode 26+ and macOS 14.0 or later.
 
-Your PAT is stored securely in the macOS Keychain, not in plain text. The app only uses the token to read workflow data - it cannot modify your repositories.
+<br>
+
+## Setup
+
+Runway needs a GitHub Personal Access Token (classic) with two scopes:
+
+| Scope | Why |
+|---|---|
+| `repo` | Access workflow runs across your repositories |
+| `workflow` | Read workflow and run data |
+
+**Create one in under a minute:**
+
+1. Open [GitHub &rarr; Settings &rarr; Tokens (classic)](https://github.com/settings/tokens)
+2. Click **Generate new token (classic)**
+3. Name it something like `Runway`
+4. Check **`repo`** and **`workflow`**
+5. Generate and copy the token
+
+Paste it into Runway's settings, hit **Connect**, pick your repositories, and you are done.
+
+<br>
 
 ## Usage
 
-1. **Launch the app** - Runway appears as a dot in your menu bar (no Dock icon)
-2. **Click the menu bar icon** - Opens the main popover
-3. **Click the gear icon** - Opens Settings
-4. **Enter your PAT** - Click "Connect" to authenticate
-5. **You're done!** - Your workflows will appear automatically
+Runway lives in your menu bar &mdash; no Dock icon, no windows in the way. Click the status dot to open the popover.
 
-### Menu Bar Icon Behavior
+| Indicator | Meaning |
+|---|---|
+| Orange (pulsing) | At least one workflow is running |
+| Red | A recent workflow has failed |
+| Green | All recent workflows passed |
+| Gray | Not connected or no recent activity |
 
-| Status | Color | Description |
-|--------|-------|-------------|
-| Running | Orange | At least one workflow is running |
-| Failed | Red | A workflow has failed |
-| Success | Green | All recent workflows succeeded (none running) |
-| Idle | Gray | No workflows found or not connected |
+Click any workflow to drill into jobs and steps. Click a step to read its logs. The popover auto-refreshes while workflows are running.
 
-### Popover Interface
+### Preferences
 
-- **Header**: App name + settings gear icon
-- **Workflow List**: Shows your 10 most recent workflow runs
-- **Click a workflow**: Opens it in GitHub
-- **Footer**: Status text + refresh button
+Open settings via the gear icon in the popover header:
 
-### Notifications
+- **Polling interval** &mdash; 15 seconds, 30 seconds, 1 minute, or 2 minutes
+- **Global shortcut** &mdash; Record a custom hotkey to toggle Runway from anywhere
+- **Launch at login** &mdash; Start Runway automatically when you log in
+- **Repository selection** &mdash; Choose which repos to monitor
 
-You'll receive a native macOS notification when:
-- A workflow completes successfully
-- A workflow fails
-
-Clicking the notification opens the workflow in GitHub.
-
-## Preferences
-
-Customize Runway via the Settings popover:
-
-- **GitHub PAT**: Your authentication token
-- **Polling Interval**: How often to check for updates (15s, 30s, 1m, 2m)
-- **Quit**: Exit the application
-
-## Troubleshooting
-
-### "Failed to connect" error
-
-- Make sure your PAT has the required scopes (`repo` and `workflow`)
-- Check your internet connection
-- Verify the PAT hasn't expired
-
-### No workflows appearing
-
-- Ensure your GitHub account has triggered workflow runs
-- Check that the PAT is properly saved (try reconnecting)
-- Verify the polling interval isn't too long
-
-### Notifications not working
-
-- Check System Settings → Notifications → Allow Runway
-- Make sure notifications are enabled in the app
+<br>
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome. Fork the repo, create a branch, and open a pull request.
 
 ## License
 
-MIT License - see LICENSE file for details.
+[MIT](LICENSE) &copy; Andre Koenig

@@ -161,7 +161,6 @@ struct GitHubLogo: Shape {
         return p
     }
 }
-}
 
 /// Centered empty state with an icon, title, and subtitle.
 struct EmptyStateView: View {
