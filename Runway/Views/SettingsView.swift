@@ -409,13 +409,19 @@ struct SettingsView: View {
             Spacer()
 
             Button {
-                NSWorkspace.shared.open(URL(string: "https://github.com/anomalyco/Runway")!)
+                NSWorkspace.shared.open(URL(string: "https://github.com/akoenig/runway")!)
             } label: {
-                Image(systemName: "arrow.up.right.square")
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(.quaternary)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
+                HStack(spacing: 4) {
+                    GitHubLogo()
+                        .frame(width: 12, height: 12)
+                        .foregroundStyle(.quaternary)
+
+                    Text("akoenig/runway")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.quaternary)
+                }
+                .frame(height: 28)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help("View on GitHub")
