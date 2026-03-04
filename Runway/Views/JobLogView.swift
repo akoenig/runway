@@ -219,7 +219,7 @@ struct JobLogView: View {
         isLoading = true
         fetchError = nil
         do {
-            allLines = try await GitHubService.shared.fetchJobLogs(jobId: job.id, repo: repo)
+            allLines = try await GitHubService.shared.fetchJobLogs(jobId: job.id, repo: repo, steps: job.steps)
         } catch {
             fetchError = error.localizedDescription
         }

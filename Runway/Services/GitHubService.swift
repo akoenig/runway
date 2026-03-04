@@ -250,7 +250,7 @@ final class GitHubService: @unchecked Sendable {
         }
     }
 
-    func fetchJobLogs(jobId: Int, repo: Repository) async throws -> [LogLine] {
+    func fetchJobLogs(jobId: Int, repo: Repository, steps: [WorkflowStep]) async throws -> [LogLine] {
         let owner = repo.owner?.login ?? "unknown"
         let request = try createRequest(
             path: "/repos/\(owner)/\(repo.name)/actions/jobs/\(jobId)/logs"
@@ -268,14 +268,24 @@ final class GitHubService: @unchecked Sendable {
         }
 
         let raw = String(data: data, encoding: .utf8) ?? ""
-        return GitHubService.parseLogLines(raw)
+        return GitHubService.parseLogLines(raw, steps: steps)
     }
 
     /// Parse raw GitHub Actions log text into structured `LogLine` values.
-    /// Each `##[group]` marker starts a new step section; `stepNumber` increments
-    /// with each group so callers can filter lines per step by matching
-    /// `LogLine.stepNumber` to `WorkflowStep.number`.
-    static func parseLogLines(_ raw: String) -> [LogLine] {
+    ///
+    /// GitHub Actions steps (like `actions/checkout`) can emit multiple
+    /// `##[group]` markers internally for sub-sections. Simply counting
+    /// groups would mis-assign lines to the wrong step. Instead, we match
+    /// each `##[group]` header against the known API step names. Only a
+    /// matching header advances the step pointer; inner sub-groups are
+    /// treated as part of the current step.
+    static func parseLogLines(_ raw: String, steps: [WorkflowStep]) -> [LogLine] {
+        // Build lookup: step name → step number.
+        let stepNameToNumber: [String: Int] = Dictionary(
+            steps.map { ($0.name, $0.number) },
+            uniquingKeysWith: { first, _ in first }
+        )
+
         // Regex to strip the leading ISO8601 timestamp: "2024-01-15T10:23:45.1234567Z "
         let timestampPattern = #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z "#
         let timestampRegex = try? NSRegularExpression(pattern: timestampPattern)
@@ -302,10 +312,15 @@ final class GitHubService: @unchecked Sendable {
                 line = regex.stringByReplacingMatches(in: line, range: range, withTemplate: "")
             }
 
-            // Each ##[group] starts a new step section
+            // Check if this is a ##[group] marker.
             if line.hasPrefix("##[group]") {
-                currentStep += 1
-                // Skip the bare group header line itself (it duplicates the step name)
+                let groupName = String(line.dropFirst("##[group]".count))
+                // Only advance step pointer when the group name matches
+                // a known API step. Inner sub-groups (e.g. from
+                // actions/checkout) are silently absorbed by the current step.
+                if let stepNumber = stepNameToNumber[groupName] {
+                    currentStep = stepNumber
+                }
                 continue
             }
 
