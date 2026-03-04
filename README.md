@@ -9,7 +9,9 @@
   Know the moment your workflows pass or fail - without leaving your context.
 </p>
 
-![Demo](demo.mp4)
+<p align="center">
+  <img src="demo.png" alt="Demo" width="800">
+</p>
 
 <br>
 
