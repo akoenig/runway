@@ -10,6 +10,9 @@ struct WorkflowDetailView: View {
     @State private var fetchError: String?
     /// When set, shows JobLogView for the selected (job, step) pair.
     @State private var selectedLog: (job: WorkflowJob, step: WorkflowStep)?
+    /// Monotonically increasing tick that forces SwiftUI to re-render
+    /// after each poll, even when the fetched data is structurally identical.
+    @State private var refreshTick: UInt64 = 0
 
     init(workflow: WorkflowRun, onBack: @escaping () -> Void) {
         _workflow = State(initialValue: workflow)
@@ -81,7 +84,6 @@ struct WorkflowDetailView: View {
         let (color, label) = badgeStyle
         return HStack(spacing: 4) {
             if isRunning {
-                // Subtle pulse for running state
                 Circle()
                     .fill(color)
                     .frame(width: 6, height: 6)
@@ -170,10 +172,12 @@ struct WorkflowDetailView: View {
             VStack(spacing: 0) {
                 metaRow
                 Divider().opacity(0.15).padding(.horizontal, 16)
+                let now = Date()
                 ForEach(jobs) { job in
-                    JobRowView(job: job, onViewLog: { step in
+                    JobRowView(job: job, now: now, onViewLog: { step in
                         selectedLog = (job: job, step: step)
                     })
+                    .id("\(job.id)-\(refreshTick)")
                 }
             }
             .padding(.vertical, 8)
@@ -236,7 +240,7 @@ struct WorkflowDetailView: View {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             if Task.isCancelled { break }
             await refreshWorkflow()
-            await fetchJobs()
+            await refreshJobs()
         }
     }
 
@@ -253,6 +257,7 @@ struct WorkflowDetailView: View {
         }
     }
 
+    /// Initial fetch — shows loading indicator.
     private func fetchJobs() async {
         isLoading = true
         fetchError = nil
@@ -266,20 +271,42 @@ struct WorkflowDetailView: View {
         }
         isLoading = false
     }
+
+    /// Subsequent refresh — no loading indicator, bumps refreshTick
+    /// to guarantee SwiftUI re-renders even if the data is identical.
+    private func refreshJobs() async {
+        do {
+            jobs = try await GitHubService.shared.fetchJobs(
+                runId: workflow.id,
+                repo: workflow.repository
+            )
+            refreshTick &+= 1
+        } catch {
+            // Silently ignore — keep showing last known jobs
+        }
+    }
 }
 
 // MARK: - Job Row
 
 private struct JobRowView: View {
     let job: WorkflowJob
+    let now: Date
     let onViewLog: (WorkflowStep) -> Void
     @State private var expanded: Bool
 
-    init(job: WorkflowJob, onViewLog: @escaping (WorkflowStep) -> Void) {
+    init(job: WorkflowJob, now: Date, onViewLog: @escaping (WorkflowStep) -> Void) {
         self.job = job
+        self.now = now
         self.onViewLog = onViewLog
         // Auto-expand failed and in-progress jobs
         _expanded = State(initialValue: job.isFailed || job.isInProgress)
+    }
+
+    private var stepProgress: String {
+        let completed = job.completedStepCount
+        let total = job.steps.count
+        return "\(completed)/\(total)"
     }
 
     var body: some View {
@@ -300,7 +327,20 @@ private struct JobRowView: View {
 
                     Spacer()
 
-                    if let dur = job.formattedDuration {
+                    if job.isInProgress {
+                        // Step progress + elapsed time for running jobs
+                        HStack(spacing: 6) {
+                            Text(stepProgress)
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundStyle(.orange.opacity(0.7))
+
+                            if let elapsed = job.elapsedSince(now) {
+                                Text(elapsed)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundStyle(.quaternary)
+                            }
+                        }
+                    } else if let dur = job.formattedDuration {
                         Text(dur)
                             .font(.system(size: 11))
                             .foregroundStyle(.quaternary)
@@ -320,8 +360,12 @@ private struct JobRowView: View {
             // Steps — visible when expanded
             if expanded {
                 VStack(spacing: 0) {
-                    ForEach(job.steps.filter { !$0.isSkipped }) { step in
-                        StepRowView(step: step, isLogAvailable: !job.isInProgress, onViewLog: { onViewLog(step) })
+                    ForEach(job.steps) { step in
+                        StepRowView(
+                            step: step,
+                            isLogAvailable: step.isSuccess || step.isFailed,
+                            onViewLog: { onViewLog(step) }
+                        )
                     }
                 }
                 .padding(.bottom, 4)
@@ -368,33 +412,29 @@ private struct StepRowView: View {
 
     var body: some View {
         Button(action: onViewLog) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 // Indent line
                 Rectangle()
                     .fill(Color.primary.opacity(0.06))
                     .frame(width: 1)
                     .padding(.leading, 27)
 
-                Circle()
-                    .fill(stepColor)
-                    .frame(width: 5, height: 5)
+                stepStatusIcon
 
                 Text(step.name)
                     .font(.system(size: 11))
-                    .foregroundStyle(step.isFailed ? .primary : .secondary)
+                    .foregroundStyle(stepTextColor)
                     .lineLimit(2)
 
                 Spacer()
 
-                if step.isFailed {
-                    Text("failed")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.red.opacity(0.8))
-                } else if step.isInProgress {
-                    Text("running")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.orange.opacity(0.8))
+                if let dur = step.formattedDuration {
+                    Text(dur)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.quaternary)
                 }
+
+                stepStatusLabel
 
                 if isLogAvailable {
                     Image(systemName: "doc.plaintext")
@@ -413,16 +453,77 @@ private struct StepRowView: View {
         .onHover { isHovered = $0 }
     }
 
-    private var rowBackground: Color {
-        if isHovered { return Color.primary.opacity(0.05) }
-        if step.isFailed { return Color.red.opacity(0.04) }
-        return Color.clear
+    // MARK: - Step Status Icon
+
+    @ViewBuilder
+    private var stepStatusIcon: some View {
+        if step.isInProgress {
+            ZStack {
+                Circle()
+                    .stroke(Color.orange.opacity(0.3), lineWidth: 1.5)
+                    .frame(width: 12, height: 12)
+                Circle()
+                    .fill(Color.orange)
+                    .frame(width: 6, height: 6)
+            }
+        } else if step.isSuccess {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(.green)
+        } else if step.isFailed {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(.red)
+        } else if step.isSkipped {
+            Image(systemName: "minus.circle")
+                .font(.system(size: 12))
+                .foregroundStyle(.gray.opacity(0.5))
+        } else {
+            // Pending / queued
+            Circle()
+                .stroke(Color.primary.opacity(0.15), lineWidth: 1.5)
+                .frame(width: 12, height: 12)
+        }
     }
 
-    private var stepColor: Color {
-        if step.isFailed { return .red }
-        if step.isInProgress { return .orange }
-        if step.isSuccess { return .green }
-        return .gray
+    // MARK: - Step Status Label
+
+    @ViewBuilder
+    private var stepStatusLabel: some View {
+        if step.isFailed {
+            Text("failed")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.red.opacity(0.8))
+        } else if step.isInProgress {
+            Text("running")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.orange.opacity(0.8))
+        } else if step.isSkipped {
+            Text("skipped")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.gray.opacity(0.5))
+        } else if step.isPending {
+            Text("pending")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.gray.opacity(0.5))
+        }
+        // Success steps show no label — the checkmark icon is enough
+    }
+
+    // MARK: - Styling
+
+    private var stepTextColor: Color {
+        if step.isFailed { return .primary }
+        if step.isInProgress { return .primary }
+        if step.isSkipped { return .secondary.opacity(0.5) }
+        if step.isPending { return .secondary.opacity(0.5) }
+        return .secondary
+    }
+
+    private var rowBackground: Color {
+        if isHovered && isLogAvailable { return Color.primary.opacity(0.05) }
+        if step.isFailed { return Color.red.opacity(0.04) }
+        if step.isInProgress { return Color.orange.opacity(0.03) }
+        return Color.clear
     }
 }

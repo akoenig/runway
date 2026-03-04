@@ -14,6 +14,8 @@ struct WorkflowStep: Codable, Identifiable {
     let name: String
     let status: String
     let conclusion: String?
+    let startedAt: Date?
+    let completedAt: Date?
 
     var id: Int { number }
 
@@ -31,6 +33,18 @@ struct WorkflowStep: Codable, Identifiable {
 
     var isSuccess: Bool {
         conclusion == "success"
+    }
+
+    var isPending: Bool {
+        status == "queued"
+    }
+
+    var formattedDuration: String? {
+        guard let start = startedAt, let end = completedAt else { return nil }
+        let d = end.timeIntervalSince(start)
+        if d < 1 { return "<1s" }
+        if d < 60 { return "\(Int(d))s" }
+        return "\(Int(d / 60))m \(Int(d.truncatingRemainder(dividingBy: 60)))s"
     }
 }
 
@@ -50,6 +64,22 @@ struct WorkflowJob: Codable, Identifiable {
 
     var isInProgress: Bool {
         status == "in_progress"
+    }
+
+    /// Number of steps that have completed (success, failure, or skipped).
+    var completedStepCount: Int {
+        steps.filter { $0.status == "completed" }.count
+    }
+
+    /// Elapsed time since the job started, formatted for display.
+    /// Returns nil if the job hasn't started.
+    func elapsedSince(_ now: Date) -> String? {
+        guard let start = startedAt else { return nil }
+        let end = completedAt ?? now
+        let d = end.timeIntervalSince(start)
+        if d < 1 { return "<1s" }
+        if d < 60 { return "\(Int(d))s" }
+        return "\(Int(d / 60))m \(Int(d.truncatingRemainder(dividingBy: 60)))s"
     }
 
     /// Duration in seconds, nil if not yet complete.
