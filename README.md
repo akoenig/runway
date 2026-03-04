@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>GitHub Actions monitoring for your menu bar.</strong><br>
-  Know the moment your workflows pass or fail &mdash; without leaving your editor.
+  Know the moment your workflows pass or fail - without leaving your context.
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@
 
 ## Why Runway?
 
-Switching to a browser tab to check if your CI passed is a small interruption &mdash; but it adds up. Runway puts a live status indicator in your menu bar so you always know where things stand. A green dot means you can ship. A red dot means you can fix it now, not five minutes from now.
+Switching to a browser tab to check if your CI passed is a small interruption - but it adds up. Runway puts a live status indicator in your menu bar so you always know where things stand. A green dot means you can ship. A red dot means you can fix it now, not five minutes from now.
 
 **One icon. Zero context switches.**
 
@@ -28,21 +28,21 @@ Switching to a browser tab to check if your CI passed is a small interruption &m
 
 ## Features
 
-**Live status at a glance** &mdash; A color-coded menu bar indicator shows overall workflow health. Orange means running, green means passed, red means failed.
+**Live status at a glance** - A color-coded menu bar indicator shows overall workflow health. Orange means running, green means passed, red means failed.
 
-**Detailed drill-down** &mdash; Click through from workflow to job to individual step. See exactly what failed and why, without opening GitHub.
+**Detailed drill-down** - Click through from workflow to job to individual step. See exactly what failed and why, without opening GitHub.
 
-**Built-in log viewer** &mdash; Read parsed, syntax-highlighted job logs directly in the app. Errors are called out in red, warnings in orange.
+**Built-in log viewer** - Read parsed, syntax-highlighted job logs directly in the app. Errors are called out in red, warnings in orange.
 
-**Native notifications** &mdash; Get alerted the moment a workflow completes or fails. Click the notification to jump straight to it.
+**Native notifications** - Get alerted the moment a workflow completes or fails. Click the notification to jump straight to it.
 
-**Repository picker** &mdash; Choose which repositories to monitor. Search, select all, or fine-tune &mdash; it is your call.
+**Repository picker** - Choose which repositories to monitor. Search, select all, or fine-tune - it is your call.
 
-**Global keyboard shortcut** &mdash; Toggle the Runway popover from anywhere with a configurable hotkey.
+**Global keyboard shortcut** - Toggle the Runway popover from anywhere with a configurable hotkey.
 
-**Secure by default** &mdash; Your GitHub token is stored in the macOS Keychain. The app is fully sandboxed and only makes read-only API calls.
+**Secure by default** - Your GitHub token is stored in the macOS Keychain. The app is fully sandboxed and only makes read-only API calls.
 
-**Launch at login** &mdash; One toggle and Runway starts with your Mac, quietly waiting in the menu bar.
+**Launch at login** - One toggle and Runway starts with your Mac, quietly waiting in the menu bar.
 
 <br>
 
@@ -90,7 +90,7 @@ Paste it into Runway's settings, hit **Connect**, pick your repositories, and yo
 
 ## Usage
 
-Runway lives in your menu bar &mdash; no Dock icon, no windows in the way. Click the status dot to open the popover.
+Runway lives in your menu bar - no Dock icon, no windows in the way. Click the status dot to open the popover.
 
 | Indicator | Meaning |
 |---|---|
@@ -105,10 +105,10 @@ Click any workflow to drill into jobs and steps. Click a step to read its logs. 
 
 Open settings via the gear icon in the popover header:
 
-- **Polling interval** &mdash; 15 seconds, 30 seconds, 1 minute, or 2 minutes
-- **Global shortcut** &mdash; Record a custom hotkey to toggle Runway from anywhere
-- **Launch at login** &mdash; Start Runway automatically when you log in
-- **Repository selection** &mdash; Choose which repos to monitor
+- **Polling interval** - 15 seconds, 30 seconds, 1 minute, or 2 minutes
+- **Global shortcut** - Record a custom hotkey to toggle Runway from anywhere
+- **Launch at login** - Start Runway automatically when you log in
+- **Repository selection** - Choose which repos to monitor
 
 <br>
 
@@ -118,4 +118,4 @@ Contributions are welcome. Fork the repo, create a branch, and open a pull reque
 
 ## License
 
-[MIT](LICENSE) &copy; Andre Koenig
+[MIT](LICENSE) &copy; [Andre Koenig](https://github.com/akoenig)
