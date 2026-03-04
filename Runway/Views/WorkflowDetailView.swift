@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 struct WorkflowDetailView: View {
-    let workflow: WorkflowRun
+    @State private var workflow: WorkflowRun
     let onBack: () -> Void
 
     @State private var jobs: [WorkflowJob] = []
@@ -10,6 +10,11 @@ struct WorkflowDetailView: View {
     @State private var fetchError: String?
     /// When set, shows JobLogView for the selected (job, step) pair.
     @State private var selectedLog: (job: WorkflowJob, step: WorkflowStep)?
+
+    init(workflow: WorkflowRun, onBack: @escaping () -> Void) {
+        _workflow = State(initialValue: workflow)
+        self.onBack = onBack
+    }
 
     private var isRunning: Bool {
         workflow.workflowStatus == .running
@@ -230,7 +235,21 @@ struct WorkflowDetailView: View {
         while !Task.isCancelled && isRunning {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             if Task.isCancelled { break }
+            await refreshWorkflow()
             await fetchJobs()
+        }
+    }
+
+    /// Re-fetch the workflow run so the status badge and `isRunning`
+    /// flag stay current. When the run completes, the polling loop exits.
+    private func refreshWorkflow() async {
+        do {
+            workflow = try await GitHubService.shared.fetchSingleWorkflowRun(
+                runId: workflow.id,
+                repo: workflow.repository
+            )
+        } catch {
+            // Silently ignore — keep using last known state
         }
     }
 
@@ -302,7 +321,7 @@ private struct JobRowView: View {
             if expanded {
                 VStack(spacing: 0) {
                     ForEach(job.steps.filter { !$0.isSkipped }) { step in
-                        StepRowView(step: step, onViewLog: { onViewLog(step) })
+                        StepRowView(step: step, isLogAvailable: !job.isInProgress, onViewLog: { onViewLog(step) })
                     }
                 }
                 .padding(.bottom, 4)
@@ -343,6 +362,7 @@ private struct JobRowView: View {
 
 private struct StepRowView: View {
     let step: WorkflowStep
+    let isLogAvailable: Bool
     let onViewLog: () -> Void
     @State private var isHovered = false
 
@@ -376,9 +396,11 @@ private struct StepRowView: View {
                         .foregroundStyle(.orange.opacity(0.8))
                 }
 
-                Image(systemName: "doc.plaintext")
-                    .font(.system(size: 10))
-                    .foregroundStyle(isHovered ? .primary : .quaternary)
+                if isLogAvailable {
+                    Image(systemName: "doc.plaintext")
+                        .font(.system(size: 10))
+                        .foregroundStyle(isHovered ? .primary : .quaternary)
+                }
             }
             .padding(.leading, 16)
             .padding(.trailing, 16)
@@ -387,6 +409,7 @@ private struct StepRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(!isLogAvailable)
         .onHover { isHovered = $0 }
     }
 
