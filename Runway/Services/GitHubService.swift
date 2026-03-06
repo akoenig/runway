@@ -69,6 +69,11 @@ final class GitHubService: @unchecked Sendable {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 60
+        // Bypass the URL cache so polling always gets fresh data from GitHub.
+        // Without this, URLSession honours the API's Cache-Control max-age
+        // header (~60s) and can serve stale responses that show workflows as
+        // running/queued even though they already completed.
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
         self.session = URLSession(configuration: config)
     }
 
