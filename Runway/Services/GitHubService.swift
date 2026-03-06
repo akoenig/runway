@@ -269,6 +269,35 @@ final class GitHubService: @unchecked Sendable {
         name.hasPrefix("Post ")
     }
 
+    // MARK: - App Update Check
+
+    /// Fetches the latest release tag from the Runway repository.
+    /// Returns the version string without the `v` prefix (e.g. "1.8.0"),
+    /// or `nil` if the request fails or the tag can't be parsed.
+    func fetchLatestReleaseVersion() async -> String? {
+        guard let url = URL(string: "\(baseURL)/repos/akoenig/runway/releases/latest") else {
+            return nil
+        }
+
+        // Use an unauthenticated request — the repo is public and this
+        // avoids consuming the user's authenticated rate-limit budget.
+        var request = URLRequest(url: url)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            return nil
+        }
+
+        struct Release: Decodable { let tagName: String }
+        guard let release = try? Self.decoder.decode(Release.self, from: data) else {
+            return nil
+        }
+
+        let tag = release.tagName
+        return tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+    }
+
     /// Cached list of user repos so the polling loop doesn't re-fetch them
     /// on every cycle. Call `invalidateRepoCache()` to force a refresh.
     private var cachedRepos: [Repository]?

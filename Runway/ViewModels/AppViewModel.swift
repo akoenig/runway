@@ -32,6 +32,9 @@ final class AppViewModel {
     }
     var availableRepos: [Repository] = []
 
+    /// Non-nil when a newer version is available on GitHub Releases.
+    var updateAvailableVersion: String?
+
     var shortcutKeyCode: Int = -1
     var shortcutModifiers: Int = 0
     var shortcutKeyChar: String = ""
@@ -182,10 +185,12 @@ final class AppViewModel {
 
         await fetchWorkflowRuns()
         startPolling()
+        startUpdateChecks()
     }
 
     func stopMonitoring() {
         monitoringTask?.cancel()
+        updateCheckTask?.cancel()
         monitoringTask = nil
     }
 
@@ -293,5 +298,47 @@ final class AppViewModel {
         if flags.contains(.command) { s += "⌘" }
         s += shortcutKeyChar
         return s
+    }
+
+    // MARK: - Update Check
+
+    private var updateCheckTask: Task<Void, Never>?
+
+    /// Check once on launch, then every 30 minutes.
+    func startUpdateChecks() {
+        updateCheckTask?.cancel()
+        updateCheckTask = Task {
+            await checkForUpdate()
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 30 * 60 * 1_000_000_000)
+                guard !Task.isCancelled else { break }
+                await checkForUpdate()
+            }
+        }
+    }
+
+    private func checkForUpdate() async {
+        guard let latest = await GitHubService.shared.fetchLatestReleaseVersion() else { return }
+
+        let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+
+        if Self.isNewerVersion(latest, than: current) {
+            updateAvailableVersion = latest
+        } else {
+            updateAvailableVersion = nil
+        }
+    }
+
+    /// Simple semver comparison for three-component versions (X.Y.Z).
+    static func isNewerVersion(_ a: String, than b: String) -> Bool {
+        let partsA = a.split(separator: ".").compactMap { Int($0) }
+        let partsB = b.split(separator: ".").compactMap { Int($0) }
+        guard partsA.count == 3, partsB.count == 3 else { return false }
+
+        for i in 0..<3 {
+            if partsA[i] > partsB[i] { return true }
+            if partsA[i] < partsB[i] { return false }
+        }
+        return false
     }
 }

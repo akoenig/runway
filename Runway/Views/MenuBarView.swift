@@ -178,15 +178,33 @@ struct MenuBarView: View {
 
             Spacer()
 
-            // Status
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(viewModel.overallStatus.color)
-                    .frame(width: 6, height: 6)
+            // Center: update indicator or status
+            if let version = viewModel.updateAvailableVersion {
+                Button {
+                    if let url = URL(string: "https://github.com/akoenig/runway/releases/latest") {
+                        NSWorkspace.shared.open(url)
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 11, weight: .medium))
 
-                Text(viewModel.statusText)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
+                        Text("v\(version) available")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(.accentColor)
+                }
+                .buttonStyle(.plain)
+            } else {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(viewModel.overallStatus.color)
+                        .frame(width: 6, height: 6)
+
+                    Text(viewModel.statusText)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             Spacer()
