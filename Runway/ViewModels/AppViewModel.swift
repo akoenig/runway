@@ -38,6 +38,10 @@ final class AppViewModel {
 
     var onWorkflowCompleted: ((WorkflowRun) -> Void)?
     var onShortcutChanged: (() -> Void)?
+    /// Set to true by MenuBarView when a sub-view (detail or settings) is active.
+    var isShowingSubview: Bool = false
+    /// Called by AppDelegate's hotkey handler to navigate back to the workflow list.
+    var onNavigateToMainList: (() -> Void)?
 
     private var monitoringTask: Task<Void, Never>?
     private var previousCompletedWorkflowIds: Set<Int> = []

@@ -20,6 +20,18 @@ struct MenuBarView: View {
         }
         .frame(width: 340, height: 420)
         .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear {
+            viewModel.onNavigateToMainList = {
+                showSettings = false
+                selectedWorkflow = nil
+            }
+        }
+        .onChange(of: showSettings) { _, new in
+            viewModel.isShowingSubview = new || selectedWorkflow != nil
+        }
+        .onChange(of: selectedWorkflow) { _, new in
+            viewModel.isShowingSubview = showSettings || new != nil
+        }
     }
 
     private var mainContent: some View {

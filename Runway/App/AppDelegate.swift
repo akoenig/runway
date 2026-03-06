@@ -138,7 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupHotkey() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(togglePopover),
+            selector: #selector(hotkeyTriggered),
             name: .hotkeyToggle,
             object: nil
         )
@@ -211,6 +211,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if popover.isShown {
             popover.performClose(nil)
+        } else {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    /// Handles the global keyboard shortcut. When the popover is visible and a
+    /// sub-view (detail or settings) is active, navigates back to the main
+    /// workflow list. When already on the main list, closes the popover.
+    @objc private func hotkeyTriggered() {
+        guard let button = statusItem?.button, let popover = popover else { return }
+
+        if popover.isShown {
+            if viewModel.isShowingSubview {
+                viewModel.onNavigateToMainList?()
+            } else {
+                popover.performClose(nil)
+            }
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             NSApp.activate(ignoringOtherApps: true)
