@@ -68,6 +68,7 @@ final class AppViewModel {
         let recent = recentWorkflows
         let runningCount = recent.filter { $0.workflowStatus == .running }.count
         let failedCount = recent.filter { $0.workflowStatus == .failure }.count
+        let queuedCount = recent.filter { $0.workflowStatus == .queued }.count
         let successCount = recent.filter { $0.workflowStatus == .success }.count
 
         // Running takes priority — active work is the most important signal.
@@ -75,22 +76,27 @@ final class AppViewModel {
             return .running
         } else if failedCount > 0 {
             return .failure
+        } else if queuedCount > 0 {
+            return .queued
         } else if successCount > 0 {
             return .success
         }
         return .idle
     }
 
-    /// Count shown next to the menu bar dot — only running workflows.
+    /// Count shown next to the menu bar dot — running and queued workflows.
     var activeWorkflowCount: Int {
-        workflows.filter { $0.workflowStatus == .running }.count
+        workflows.filter { $0.workflowStatus == .running || $0.workflowStatus == .queued }.count
     }
 
     var statusText: String {
         let runningCount = workflows.filter { $0.workflowStatus == .running }.count
+        let queuedCount = workflows.filter { $0.workflowStatus == .queued }.count
 
         if runningCount > 0 {
             return "\(runningCount) running"
+        } else if queuedCount > 0 {
+            return "\(queuedCount) queued"
         }
         return "All clear"
     }

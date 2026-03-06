@@ -55,8 +55,12 @@ struct MenuBarView: View {
         viewModel.workflows.filter { $0.workflowStatus == .running }
     }
 
+    private var queuedWorkflows: [WorkflowRun] {
+        viewModel.workflows.filter { $0.workflowStatus == .queued }
+    }
+
     private var recentWorkflows: [WorkflowRun] {
-        viewModel.workflows.filter { $0.workflowStatus != .running }
+        viewModel.workflows.filter { $0.workflowStatus != .running && $0.workflowStatus != .queued }
     }
 
     private var workflowListView: some View {
@@ -73,6 +77,20 @@ struct MenuBarView: View {
                         }
                     } header: {
                         sectionHeader(title: "Running", count: runningWorkflows.count)
+                    }
+                }
+
+                // Queued section
+                if !queuedWorkflows.isEmpty {
+                    Section {
+                        ForEach(queuedWorkflows) { workflow in
+                            WorkflowRowView(
+                                workflow: workflow,
+                                onDetail: { selectedWorkflow = workflow }
+                            )
+                        }
+                    } header: {
+                        sectionHeader(title: "Queued", count: queuedWorkflows.count)
                     }
                 }
 

@@ -4,6 +4,7 @@ import SwiftUI
 
 enum WorkflowStatus: String, Codable {
     case idle
+    case queued
     case running
     case success
     case failure
@@ -11,6 +12,7 @@ enum WorkflowStatus: String, Codable {
     var displayName: String {
         switch self {
         case .idle: return "Idle"
+        case .queued: return "Queued"
         case .running: return "Running"
         case .success: return "Success"
         case .failure: return "Failed"
@@ -21,6 +23,7 @@ enum WorkflowStatus: String, Codable {
     var color: Color {
         switch self {
         case .idle: .gray
+        case .queued: .gray
         case .running: .orange
         case .success: .green
         case .failure: .red
@@ -31,6 +34,7 @@ enum WorkflowStatus: String, Codable {
     var nsColor: NSColor {
         switch self {
         case .idle: .systemGray
+        case .queued: .systemGray
         case .running: .systemOrange
         case .success: .systemGreen
         case .failure: .systemRed
@@ -55,7 +59,11 @@ struct WorkflowRun: Identifiable, Codable, Equatable {
         if status == "completed" {
             return conclusion == "success" ? .success : .failure
         }
-        return .running
+        if status == "in_progress" {
+            return .running
+        }
+        // queued, waiting, requested, pending — all waiting for a runner
+        return .queued
     }
 
     var formattedDate: String {

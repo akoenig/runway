@@ -19,8 +19,14 @@ struct WorkflowDetailView: View {
         self.onBack = onBack
     }
 
+    /// True only when the workflow is actively executing — drives the pulse animation.
     private var isRunning: Bool {
         workflow.workflowStatus == .running
+    }
+
+    /// True while the workflow is waiting or executing — drives the polling loop.
+    private var isActive: Bool {
+        workflow.workflowStatus == .running || workflow.workflowStatus == .queued
     }
 
     var body: some View {
@@ -197,12 +203,12 @@ struct WorkflowDetailView: View {
 
     // MARK: - Lifecycle
 
-    /// Initial load + polling loop while the workflow is running.
+    /// Initial load + polling loop while the workflow is active (queued or running).
     private func loadAndPoll() async {
         await fetchJobs()
-        guard isRunning else { return }
-        // Poll every 5 seconds while workflow is still in-progress
-        while !Task.isCancelled && isRunning {
+        guard isActive else { return }
+        // Poll every 5 seconds while workflow is queued or in-progress
+        while !Task.isCancelled && isActive {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             if Task.isCancelled { break }
             await refreshWorkflow()
