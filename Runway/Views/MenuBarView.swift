@@ -192,7 +192,7 @@ struct MenuBarView: View {
                         Text("v\(version) available")
                             .font(.system(size: 11, weight: .medium))
                     }
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                 }
                 .buttonStyle(.plain)
             } else {
