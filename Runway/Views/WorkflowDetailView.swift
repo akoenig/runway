@@ -175,9 +175,28 @@ struct WorkflowDetailView: View {
 
     // MARK: - Footer
 
+    @State private var didCopyURL: Bool = false
+
     private var footerBar: some View {
         HStack {
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(workflow.htmlUrl, forType: .string)
+                didCopyURL = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    didCopyURL = false
+                }
+            } label: {
+                Image(systemName: didCopyURL ? "checkmark" : "link")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
             Spacer()
+
             Button {
                 if let url = URL(string: workflow.htmlUrl) {
                     NSWorkspace.shared.open(url)
